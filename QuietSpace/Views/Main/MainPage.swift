@@ -128,9 +128,9 @@ struct MainPage: View {
                         
                         Spacer()
                         
-                        Button(action: {}) {
+                        NavigationLink(destination: SearchPage()) {
                             VStack(spacing: 4) {
-                                Image(systemName: "mappin.and.ellipse")
+                                Image(systemName: "magnifyingglass")
                                     .font(.system(size: 24))
                                     .foregroundColor(.gray)
                                 Text("Search")
@@ -141,9 +141,10 @@ struct MainPage: View {
                         
                         Spacer()
                         
-                        Button(action: {}) {
+                        // Community/Post Button
+                        NavigationLink(destination: CommunityPage()) {
                             VStack(spacing: 4) {
-                                Image(systemName: "plus.circle.fill")
+                                Image(systemName: "bubble.left.and.bubble.right.fill")
                                     .font(.system(size: 40))
                                     .foregroundColor(Color(red: 0.6, green: 0.8, blue: 0.7))
                             }
@@ -152,7 +153,7 @@ struct MainPage: View {
                         
                         Spacer()
                         
-                        Button(action: {}) {
+                        NavigationLink(destination: FavoritesPage()) {
                             VStack(spacing: 4) {
                                 Image(systemName: "heart")
                                     .font(.system(size: 24))
