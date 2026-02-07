@@ -1,17 +1,14 @@
-//
-//  QuietSpaceApp.swift
-//  QuietSpace
-//
-//  Created by Gozde Eski on 2026-02-06.
-//
-
+// QuietSpaceApp.swift
+// Main entry point setting up NavigationStack with LaunchScreen as the initial view.
 import SwiftUI
 
 @main
 struct QuietSpaceApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationStack {
+                LaunchScreen()
+            }
         }
     }
 }
