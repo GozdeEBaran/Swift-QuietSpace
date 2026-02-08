@@ -10,9 +10,33 @@
 		B65614012F36C941003421F5 /* QuietSpace.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuietSpace.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		85DF04BA2F387DC600747A6A /* Exceptions for "QuietSpace" folder in "QuietSpace" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				.gitignore,
+			);
+			target = B65614002F36C941003421F5 /* QuietSpace */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		85DF04BB2F387DC600747A6A /* Exceptions for "QuietSpace" folder in "Compile Sources" phase from "QuietSpace" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = B65613FD2F36C941003421F5 /* Sources */;
+			membershipExceptions = (
+				.gitignore,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B65614032F36C941003421F5 /* QuietSpace */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				85DF04BA2F387DC600747A6A /* Exceptions for "QuietSpace" folder in "QuietSpace" target */,
+				85DF04BB2F387DC600747A6A /* Exceptions for "QuietSpace" folder in "Compile Sources" phase from "QuietSpace" target */,
+			);
 			path = QuietSpace;
 			sourceTree = "<group>";
 		};
