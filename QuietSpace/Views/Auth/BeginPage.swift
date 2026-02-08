@@ -78,3 +78,10 @@ struct BeginPage: View {
         .navigationBarHidden(true)
     }
 }
+
+
+#Preview {
+    NavigationStack {
+        BeginPage()
+    }
+}
