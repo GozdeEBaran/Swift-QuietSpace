@@ -52,7 +52,7 @@ struct AdminDashboardCard: View {
                 }
 
                 HStack(spacing: 10) {
-                    Button(action: onReview) {
+                    NavigationLink(destination: ReviewLocation()) {
                         Text("Review")
                             .font(.subheadline)
                             .fontWeight(.semibold)
