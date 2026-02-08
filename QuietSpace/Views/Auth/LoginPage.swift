@@ -92,6 +92,18 @@ struct LoginPage: View {
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
                 
+                // Admin Login button navigates to Admin Profile
+                NavigationLink(destination: AdminProfile()) {
+                    Text("Login as Admin")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color(red: 0.6, green: 0.8, blue: 0.7))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal, 40)
+                .padding(.top, 20)
+                
                 // Register link
                 HStack {
                     Text("Don't have an account?")
