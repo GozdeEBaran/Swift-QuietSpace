@@ -1,11 +1,11 @@
 import Foundation
 
 struct AppConfig {
-    static let supabaseURL: URL = URL(string: "REMOVED_SUPABASE_URL")!
+    static let supabaseURL: URL = URL(string: Secrets.supabaseURL)!
 
-    static let supabaseAnonKey: String = "REMOVED_SUPABASE_KEY"
+    static let supabaseAnonKey: String = Secrets.supabaseAnonKey
 
-    static let googlePlacesAPIKey: String = "REMOVED_GOOGLE_KEY"
+    static let googlePlacesAPIKey: String = Secrets.googlePlacesAPIKey
 
     static let defaultLatitude: Double = 43.6532
     static let defaultLongitude: Double = -79.3832
