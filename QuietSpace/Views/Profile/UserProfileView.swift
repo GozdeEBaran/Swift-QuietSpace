@@ -3,7 +3,7 @@ import SwiftUI
 
 
 
-struct UserProfile: View{
+struct UserProfileView: View{
     
     @State private var notificationsOn = true
     @State private var locationServicesOn = false
@@ -125,6 +125,6 @@ struct UserProfile: View{
 
 #Preview {
     NavigationStack {
-        UserProfile()
+        UserProfileView()
     }
 }

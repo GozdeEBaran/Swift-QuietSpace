@@ -244,7 +244,7 @@ struct SearchPage: View {
             } else {
                 VStack(spacing: Spacing.sm) {
                     ForEach(searchVM.featuredPlaces) { place in
-                        NavigationLink(destination: PlaceDetailPage()) {
+                        NavigationLink(destination: PlaceDetailPage(place: place)) {
                             HStack(spacing: Spacing.sm) {
                                 Text(place.emoji)
                                     .font(.title3)
@@ -310,7 +310,7 @@ struct SearchPage: View {
 
                 LazyVStack(spacing: Spacing.md) {
                     ForEach(searchVM.searchResults) { place in
-                        NavigationLink(destination: PlaceDetailPage()) {
+                        NavigationLink(destination: PlaceDetailPage(place: place)) {
                             PlaceCard(place: place) {
                                 // Place tapped
                             }

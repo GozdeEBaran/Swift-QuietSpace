@@ -63,7 +63,7 @@ struct NavBar: View {
             
             Spacer()
             
-            NavigationLink(destination: UserProfile()) {
+            NavigationLink(destination: UserProfileView()) {
                 VStack(spacing: 4) {
                     Image(systemName: "person")
                         .font(.system(size: 24))
