@@ -7,7 +7,7 @@ struct Review: Identifiable, Hashable {
     let text: String
 }
 
-struct Place: Identifiable {
+struct Place: Identifiable, Hashable {
     let id: String
     let googlePlaceId: String?
     let name: String

@@ -6,6 +6,7 @@ struct MainPage: View {
     @State private var searchText: String = ""
     @StateObject private var locationManager = LocationManager()
     @StateObject private var mapViewModel = MainMapViewModel()
+    @State private var selectedPlace: Place? = nil  // Drives navigation outside Map block
 
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -20,7 +21,11 @@ struct MainPage: View {
             Map(position: $position) {
                 ForEach(mapViewModel.places) { place in
                     Annotation(place.name, coordinate: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)) {
-                        NavigationLink(destination: PlaceDetailPage(place: place)) {
+                        // Use Button + selectedPlace instead of NavigationLink inside Map
+                        // This ensures @EnvironmentObject is properly available in PlaceDetailPage
+                        Button {
+                            selectedPlace = place
+                        } label: {
                             PlaceMarkerView(place: place)
                         }
                         .buttonStyle(.plain)
@@ -29,6 +34,9 @@ struct MainPage: View {
             }
             .mapStyle(.standard)
             .edgesIgnoringSafeArea(.all)
+            .navigationDestination(item: $selectedPlace) { place in
+                PlaceDetailPage(place: place)
+            }
             
             VStack {
                 // Top search bar

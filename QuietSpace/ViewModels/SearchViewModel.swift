@@ -31,19 +31,27 @@ class SearchViewModel: ObservableObject {
     }
     
     func search(query: String, location: Any?) {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         isLoading = true
         hasSearched = true
-        
-        // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.isLoading = false
-            // Dummy logic: return random subset of featured places or new ones based on query
-            if query.lowercased().contains("library") {
-                self.searchResults = [self.featuredPlaces[0]]
-            } else if query.lowercased().contains("park") {
-                self.searchResults = [self.featuredPlaces[1]]
-            } else {
-                self.searchResults = self.featuredPlaces
+
+        Task {
+            do {
+                // Use real Google Places text search
+                let results = try await GooglePlacesService.shared.searchByText(
+                    query: query,
+                    latitude: AppConfig.defaultLatitude,
+                    longitude: AppConfig.defaultLongitude
+                )
+                await MainActor.run {
+                    self.searchResults = results
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.searchResults = []
+                    self.isLoading = false
+                }
             }
         }
     }

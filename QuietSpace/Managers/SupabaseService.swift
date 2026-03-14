@@ -64,6 +64,11 @@ final class SupabaseService {
     private func fetchRaw(req: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        guard (200..<300).contains(http.statusCode) else {
+            let msg = String(data: data, encoding: .utf8) ?? "unknown"
+            throw NSError(domain: "SupabaseService", code: http.statusCode,
+                          userInfo: [NSLocalizedDescriptionKey: msg])
+        }
         return (data, http)
     }
 
