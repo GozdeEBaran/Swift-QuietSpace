@@ -4,16 +4,21 @@ import MapKit
 struct PlaceDetailPage: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
-    
+    @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var favoritesVM: FavoritesViewModel  // Shared VM for instant Favorites tab update
+
     private var colors: AppColors { AppColors(colorScheme) }
     
     // The place to display. This is injected from navigation (search, favorites, etc.).
     @State private var place: Place
-    
+    @State private var isFavorite: Bool      // Tracks heart state locally for instant UI response
+    @State private var isSaving: Bool = false // Shows spinner while Supabase call is in flight
+
     @State private var mapRegion: MKCoordinateRegion
     
     init(place: Place) {
         _place = State(initialValue: place)
+        _isFavorite = State(initialValue: place.favorite)
         _mapRegion = State(initialValue: MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude),
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
@@ -49,14 +54,38 @@ struct PlaceDetailPage: View {
                         Spacer()
                         
                         Button {
-                            // Toggle favorite logic would go here
+                            guard let userId = auth.userId else { return }
+                            isFavorite.toggle()  // Update heart instantly for snappy feel
+                            isSaving = true
+                            Task {
+                                do {
+                                    if isFavorite {
+                                        try await SupabaseService.shared.addFavorite(userId: userId, place: place)
+                                        favoritesVM.addLocally(place)      // Instantly visible in Favorites tab
+                                    } else {
+                                        let placeId = place.googlePlaceId ?? place.id
+                                        try await SupabaseService.shared.removeFavorite(userId: userId, googlePlaceId: placeId)
+                                        favoritesVM.removeLocally(place)   // Instantly removed from Favorites tab
+                                    }
+                                } catch {
+                                    isFavorite.toggle()  // Revert if Supabase call fails
+                                }
+                                isSaving = false
+                            }
                         } label: {
-                            Image(systemName: place.favorite ? "heart.fill" : "heart")
-                                .font(.title3)
-                                .foregroundColor(place.favorite ? colors.error : colors.textPrimary)
-                                .frame(width: 40, height: 40)
-                                .background(.thinMaterial)
-                                .clipShape(Circle())
+                            if isSaving {
+                                ProgressView()
+                                    .frame(width: 40, height: 40)
+                                    .background(.thinMaterial)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                                    .font(.title3)
+                                    .foregroundColor(isFavorite ? colors.error : colors.textPrimary)
+                                    .frame(width: 40, height: 40)
+                                    .background(.thinMaterial)
+                                    .clipShape(Circle())
+                            }
                         }
                     }
                     .padding(.horizontal, Spacing.md)

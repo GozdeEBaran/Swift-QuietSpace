@@ -2,7 +2,7 @@
 import SwiftUI
 
 struct RegisterPage: View {
-    @StateObject private var auth = AuthStore()
+    @EnvironmentObject private var auth: AuthStore
     @State private var goToMain = false
     
     @State private var fullName: String = ""

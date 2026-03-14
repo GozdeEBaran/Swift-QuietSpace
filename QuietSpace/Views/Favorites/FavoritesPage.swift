@@ -2,8 +2,8 @@ import SwiftUI
 
 struct FavoritesPage: View {
     @Environment(\.colorScheme) private var colorScheme
-    @StateObject private var authVM = AuthViewModel() // Local instance for dummy view
-    @StateObject private var favoritesVM = FavoritesViewModel()
+    @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var favoritesVM: FavoritesViewModel  // Shared instance from QuietSpaceApp
 
     private var colors: AppColors {
         AppColors(colorScheme)
@@ -23,12 +23,12 @@ struct FavoritesPage: View {
                 }
             }
             .refreshable {
-                favoritesVM.fetchFavorites(userId: authVM.user?.id)
+                favoritesVM.fetchFavorites(userId: auth.userId)
             }
         }
         .background(colors.background)
         .onAppear {
-            favoritesVM.fetchFavorites(userId: authVM.user?.id)
+            favoritesVM.fetchFavorites(userId: auth.userId)
         }
     }
 
@@ -127,4 +127,6 @@ struct FavoritesPage: View {
     NavigationStack {
         FavoritesPage()
     }
+    .environmentObject(AuthStore())
+    .environmentObject(FavoritesViewModel())
 }
