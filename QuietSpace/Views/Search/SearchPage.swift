@@ -2,10 +2,11 @@ import SwiftUI
 
 struct SearchPage: View {
     @Environment(\.colorScheme) private var colorScheme
-    @StateObject private var locationManager = LocationManager() // Local instance for dummy view
+    @StateObject private var locationManager = LocationManager()
     @StateObject private var searchVM = SearchViewModel()
 
     @State private var searchText = ""
+    @State private var selectedPlace: Place? = nil  // Drives navigation safely outside list context
     @FocusState private var isSearchFocused: Bool
 
     private var colors: AppColors {
@@ -30,6 +31,9 @@ struct SearchPage: View {
                 } else {
                     discoverySection
                 }
+            }
+            .navigationDestination(item: $selectedPlace) { place in
+                PlaceDetailPage(place: place)
             }
         }
         .background(colors.background)
@@ -244,7 +248,7 @@ struct SearchPage: View {
             } else {
                 VStack(spacing: Spacing.sm) {
                     ForEach(searchVM.featuredPlaces) { place in
-                        NavigationLink(destination: PlaceDetailPage(place: place)) {
+                        Button { selectedPlace = place } label: {
                             HStack(spacing: Spacing.sm) {
                                 Text(place.emoji)
                                     .font(.title3)
@@ -283,9 +287,10 @@ struct SearchPage: View {
                                     .foregroundColor(colors.textMuted)
                             }
                             .padding(Spacing.sm)
-                            .background(colors.surface)
-                            .cornerRadius(CornerRadius.sm)
+                                .background(colors.surface)
+                                .cornerRadius(CornerRadius.sm)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, Spacing.md)
@@ -310,10 +315,8 @@ struct SearchPage: View {
 
                 LazyVStack(spacing: Spacing.md) {
                     ForEach(searchVM.searchResults) { place in
-                        NavigationLink(destination: PlaceDetailPage(place: place)) {
-                            PlaceCard(place: place) {
-                                // Place tapped
-                            }
+                        PlaceCard(place: place) {
+                            selectedPlace = place
                         }
                     }
                 }

@@ -2,13 +2,7 @@
 //  Secrets.swift
 //  QuietSpace
 //
-//  Created by Nadiia on 2026-03-12.
-//
 
-
-// Secrets.swift.example
-// Copy this file to Secrets.swift and replace the placeholders with your real keys.
-// Secrets.swift is gitignored — never commit the real file.
 
 struct Secrets {
     static let supabaseURL = "https://itwqcyumcrqqqetoqgai.supabase.co"
