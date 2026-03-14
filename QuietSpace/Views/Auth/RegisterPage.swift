@@ -2,6 +2,9 @@
 import SwiftUI
 
 struct RegisterPage: View {
+    @StateObject private var auth = AuthStore()
+    @State private var goToMain = false
+    
     @State private var fullName: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
@@ -121,18 +124,43 @@ struct RegisterPage: View {
                 .padding(.horizontal, 40)
                 .padding(.top, 10)
                 
-                // Register button (enabled only if agreed)
-                NavigationLink(destination: MainPage()) {
-                    Text("Register")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(agreed ? Color(red: 0.6, green: 0.8, blue: 0.7) : Color.gray.opacity(0.5))
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                Button {
+                    auth.signUp(
+                        email: email,
+                        password: password,
+                        confirmPassword: confirmPassword,
+                        fullName: fullName
+                    )
+                } label: {
+                    HStack {
+                        if auth.isLoading {
+                            ProgressView()
+                        }
+                        Text(auth.isLoading ? "Processing registration..." : "Register")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(agreed ? Color(red: 0.6, green: 0.8, blue: 0.7) : Color.gray.opacity(0.5))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
                 }
-                .disabled(!agreed)
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
+                .onChange(of: auth.isLoggedIn) { _, loggedIn in
+                    if loggedIn {
+                        goToMain = true
+                    }
+                }
+                .navigationDestination(isPresented: $goToMain) {
+                    MainPage()
+                }
+                
+                if let err = auth.errorMessage {
+                    Text(err)
+                        .foregroundColor(.red)
+                        .font(.caption)
+                        .padding(.horizontal, 40)
+                }
                 
                 // Login link
                 HStack {
