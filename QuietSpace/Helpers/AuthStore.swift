@@ -6,6 +6,7 @@ final class AuthStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var userId: String?
     @Published private(set) var email: String?
+    @Published private(set) var fullName: String?
     @Published var errorMessage: String?
 
     var isLoggedIn: Bool { userId != nil }

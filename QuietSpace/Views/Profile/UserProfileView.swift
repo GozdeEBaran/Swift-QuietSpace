@@ -4,6 +4,7 @@ import SwiftUI
 
 
 struct UserProfileView: View{
+    @EnvironmentObject var auth: AuthStore
     
     @State private var notificationsOn = true
     @State private var locationServicesOn = false
@@ -22,11 +23,11 @@ struct UserProfileView: View{
                         .frame(width: 100, height: 100)
                         .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.6))
                     
-                    Text("John Doe")
+                    Text(auth.email ?? "Display name not available")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     
-                    Text("john.doe@email.com")
+                    Text(auth.email ?? "Email not available")
                         .font(.title3)
                         .foregroundColor(.gray)
                 }
@@ -126,5 +127,6 @@ struct UserProfileView: View{
 #Preview {
     NavigationStack {
         UserProfileView()
+            .environmentObject(AuthStore())
     }
 }

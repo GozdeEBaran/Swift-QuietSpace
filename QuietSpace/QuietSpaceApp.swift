@@ -4,11 +4,20 @@ import SwiftUI
 
 @main
 struct QuietSpaceApp: App {
+    @StateObject private var auth = AuthStore()
+    
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                LaunchScreen()
+                if auth.isLoggedIn {
+                    MainPage()
+                } else {
+                    LoginPage()
+                }
             }
+            .environmentObject(auth)
+            
+            
         }
     }
 }

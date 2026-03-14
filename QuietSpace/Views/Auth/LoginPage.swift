@@ -2,7 +2,7 @@
 import SwiftUI
 
 struct LoginPage: View {
-    @StateObject private var auth = AuthStore()
+    @EnvironmentObject var auth: AuthStore
     @State private var goToMain = false
     
     @State private var email: String = ""
