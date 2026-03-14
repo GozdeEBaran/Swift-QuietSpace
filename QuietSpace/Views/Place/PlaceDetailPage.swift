@@ -7,36 +7,18 @@ struct PlaceDetailPage: View {
     
     private var colors: AppColors { AppColors(colorScheme) }
     
-    // Using a State object for the place to allow local mutation (like toggling favorite)
-    @State private var place: Place = Place(
-        id: "1",
-        googlePlaceId: nil,
-        name: "Central Library",
-        type: "library",
-        distance: "0.3 mi",
-        rating: 4.5,
-        reviewCount: 128,
-        latitude: 37.7749,
-        longitude: -122.4194,
-        address: "123 Main St, Downtown",
-        isOpen: true,
-        quietScore: 92,
-        photoReference: nil,
-        emoji: "📚",
-        favorite: false,
-        phoneNumber: "(555) 123-4567",
-        website: "https://library.example.com",
-        openingHours: ["Mon-Fri: 9am - 8pm", "Sat-Sun: 10am - 6pm"],
-        reviews: [
-            Place.Review(authorName: "Alice M.", rating: 5, text: "Super quiet and great for studying!"),
-            Place.Review(authorName: "Bob D.", rating: 4, text: "Good wifi but can get crowded in the afternoon.")
-        ]
-    )
+    // The place to display. This is injected from navigation (search, favorites, etc.).
+    @State private var place: Place
     
-    @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-    )
+    @State private var mapRegion: MKCoordinateRegion
+    
+    init(place: Place) {
+        _place = State(initialValue: place)
+        _mapRegion = State(initialValue: MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude),
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        ))
+    }
     
     var body: some View {
         ScrollView {
@@ -278,17 +260,31 @@ struct PlaceDetailPage: View {
     }
 }
 
-// Ensure Place.Review exists or define it here if not in Model
-extension Place {
-    struct Review: Identifiable {
-        let id = UUID()
-        let authorName: String
-        let rating: Int
-        let text: String
-    }
-}
-
 
 #Preview {
-    PlaceDetailPage()
+    let sample = Place(
+        id: "preview",
+        googlePlaceId: nil,
+        name: "Preview Library",
+        type: "library",
+        distance: "0.3km",
+        rating: 4.5,
+        reviewCount: 120,
+        latitude: 43.6532,
+        longitude: -79.3832,
+        address: "123 Main St",
+        isOpen: true,
+        quietScore: 4.5,
+        photoReference: nil,
+        emoji: "📚",
+        favorite: false,
+        phoneNumber: nil,
+        website: nil,
+        openingHours: nil,
+        reviews: nil
+    )
+    
+    return NavigationStack {
+        PlaceDetailPage(place: sample)
+    }
 }

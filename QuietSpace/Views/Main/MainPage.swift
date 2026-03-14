@@ -4,18 +4,31 @@ import MapKit
 
 struct MainPage: View {
     @State private var searchText: String = ""
+    @StateObject private var locationManager = LocationManager()
+    @StateObject private var mapViewModel = MainMapViewModel()
+
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            center: CLLocationCoordinate2D(latitude: AppConfig.defaultLatitude, longitude: AppConfig.defaultLongitude),
             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
         )
     )
     
     var body: some View {
         ZStack {
-            // Map View - Modern iOS 17+ API
-            Map(position: $position)
-                .edgesIgnoringSafeArea(.all)
+            // Map View - shows all quiet spaces with same markers as React Native (gradient bubble + pin)
+            Map(position: $position) {
+                ForEach(mapViewModel.places) { place in
+                    Annotation(place.name, coordinate: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)) {
+                        NavigationLink(destination: PlaceDetailPage(place: place)) {
+                            PlaceMarkerView(place: place)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .mapStyle(.standard)
+            .edgesIgnoringSafeArea(.all)
             
             VStack {
                 // Top search bar
@@ -117,6 +130,23 @@ struct MainPage: View {
             }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            let coordinate: CLLocationCoordinate2D
+            if let loc = locationManager.currentLocation {
+                coordinate = loc.coordinate
+            } else {
+                coordinate = CLLocationCoordinate2D(latitude: AppConfig.defaultLatitude, longitude: AppConfig.defaultLongitude)
+            }
+
+            position = .region(
+                MKCoordinateRegion(
+                    center: coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                )
+            )
+
+            mapViewModel.loadAllQuietSpaces(around: coordinate)
+        }
     }
 }
 
@@ -140,3 +170,4 @@ struct CategoryChip: View {
             )
     }
 }
+
