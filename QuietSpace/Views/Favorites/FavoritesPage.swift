@@ -57,9 +57,11 @@ struct FavoritesPage: View {
         LazyVStack(spacing: 0) {
             ForEach(favoritesVM.favorites) { place in
                 ZStack(alignment: .topTrailing) {
-                    PlaceCard(place: place) {
-                        // Place tapped
+                    // Tapping the card opens LocationProfileView for this saved place
+                    NavigationLink(destination: LocationProfileView(place: place)) {
+                        PlaceCard(place: place) {}
                     }
+                    .buttonStyle(.plain)
 
                     Button {
                         withAnimation {
