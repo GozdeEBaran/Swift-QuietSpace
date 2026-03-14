@@ -27,10 +27,31 @@ final class AuthStore: ObservableObject {
         }
     }
 
-    func signUp(email: String, password: String, fullName: String) {
+    func signUp(email: String, password: String, confirmPassword: String, fullName: String) {
         errorMessage = nil
+        
+        guard !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else{
+            self.errorMessage = "Please provide your name"
+            return
+        }
+        
+        guard !password.isEmpty else{
+            self.errorMessage = "Password is required"
+            return
+        }
+        
+        guard password == confirmPassword else {
+            self.errorMessage = "Passwords don't match"
+            return
+        }
+        
+        guard !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && email.contains("@") else {
+            errorMessage = "Enter a valid email"
+            return
+        }
+        
         isLoading = true
-
+        
         Task {
             do {
                 let res = try await SupabaseService.shared.signUp(email: email, password: password, fullName: fullName)
