@@ -2,6 +2,9 @@
 import SwiftUI
 
 struct LoginPage: View {
+    @EnvironmentObject var auth: AuthStore
+    @State private var goToMain = false
+    
     @State private var email: String = ""
     @State private var password: String = ""
     
@@ -80,17 +83,47 @@ struct LoginPage: View {
                 .padding(.horizontal, 40)
                 .padding(.top, 5)
                 
-                // Login button navigates to MainPage
-                NavigationLink(destination: MainPage()) {
-                    Text("Login")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(red: 0.6, green: 0.8, blue: 0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+//                // Login button navigates to MainPage
+//                NavigationLink(destination: MainPage()) {
+//                    Text("Login")
+//                        .frame(maxWidth: .infinity)
+//                        .padding()
+//                        .background(Color(red: 0.6, green: 0.8, blue: 0.7))
+//                        .foregroundColor(.white)
+//                        .cornerRadius(8)
+//                }
+//                .padding(.horizontal, 40)
+//                .padding(.top, 20)
+                
+                Button {
+                    auth.signIn(email: email, password: password)
+                } label: {
+                    HStack {
+                        if auth.isLoading { ProgressView() }
+                        Text(auth.isLoading ? "Logging in..." : "Login")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(red: 0.6, green: 0.8, blue: 0.7))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
                 }
+                //.disabled(auth.isLoading || email.isEmpty || password.isEmpty)
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
+                .onChange(of: auth.isLoggedIn) { loggedIn in
+                    if loggedIn { goToMain = true }
+                }
+                .navigationDestination(isPresented: $goToMain) {
+                    MainPage()
+                }
+                
+                if let err = auth.errorMessage {
+                    Text(err)
+                        .foregroundColor(.red)
+                        .font(.caption)
+                        .padding(.horizontal, 40)
+                }
                 
                 // Admin Login button navigates to Admin Profile
                 NavigationLink(destination: AdminProfile()) {
@@ -103,6 +136,8 @@ struct LoginPage: View {
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
+                
+                
                 
                 // Register link
                 HStack {
