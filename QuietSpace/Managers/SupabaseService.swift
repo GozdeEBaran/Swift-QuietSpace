@@ -166,6 +166,47 @@ final class SupabaseService {
         _ = try await fetchRaw(req: req)
     }
 
+    // MARK: - Favorites
+
+    func getFavorites(userId: String) async throws -> [FavoritePlace] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ]
+        let req = try request(path: "user_favorites", query: q)
+        return try await fetch([FavoritePlace].self, req: req)
+    }
+
+    func addFavorite(userId: String, place: Place) async throws {
+        let insert = FavoritePlaceInsert(
+            userId: userId,
+            googlePlaceId: place.googlePlaceId ?? place.id,
+            name: place.name,
+            address: place.address,
+            rating: place.rating,
+            userRatingsTotal: place.reviewCount,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            placeType: place.type,
+            quietScore: place.quietScore,
+            photoReference: place.photoReference
+        )
+        let body = try encode(insert)
+        let req = try request(path: "user_favorites", method: "POST", body: body,
+                               extraHeaders: ["Prefer": "return=representation"])
+        _ = try await fetchRaw(req: req)
+    }
+
+    func removeFavorite(userId: String, googlePlaceId: String) async throws {
+        let q = [
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "google_place_id", value: "eq.\(googlePlaceId)")
+        ]
+        let req = try request(path: "user_favorites", method: "DELETE", query: q)
+        _ = try await fetchRaw(req: req)
+    }
+
     // MARK: - Location Submissions
 
     func createLocationSubmission(_ submission: LocationSubmissionInsert) async throws -> LocationSubmission? {

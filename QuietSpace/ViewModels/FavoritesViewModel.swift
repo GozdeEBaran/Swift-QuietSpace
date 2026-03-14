@@ -54,4 +54,15 @@ class FavoritesViewModel: ObservableObject {
             try? await SupabaseService.shared.removeFavorite(userId: userId, googlePlaceId: googlePlaceId)
         }
     }
+
+    // Add a place to the local list instantly (called from PlaceDetailPage after saving)
+    func addLocally(_ place: Place) {
+        guard !favorites.contains(where: { $0.id == place.id }) else { return }
+        favorites.insert(place, at: 0)
+    }
+
+    // Remove a place from the local list instantly (called from PlaceDetailPage after deleting)
+    func removeLocally(_ place: Place) {
+        favorites.removeAll { $0.id == place.id }
+    }
 }
