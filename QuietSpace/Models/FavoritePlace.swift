@@ -1,7 +1,7 @@
 import Foundation
 
-struct FavoritePlace: Identifiable, Codable {
-    let id: Int?
+struct FavoritePlace: Identifiable, Decodable {
+    let id: String?
     let userId: String?
     let googlePlaceId: String?
     let name: String?
@@ -31,9 +31,40 @@ struct FavoritePlace: Identifiable, Codable {
         case createdAt = "created_at"
     }
 
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try? c.decodeIfPresent(String.self, forKey: .id)
+        userId = try? c.decodeIfPresent(String.self, forKey: .userId)
+        googlePlaceId = try? c.decodeIfPresent(String.self, forKey: .googlePlaceId)
+        name = try? c.decodeIfPresent(String.self, forKey: .name)
+        address = try? c.decodeIfPresent(String.self, forKey: .address)
+        placeType = try? c.decodeIfPresent(String.self, forKey: .placeType)
+        photoReference = try? c.decodeIfPresent(String.self, forKey: .photoReference)
+        if let s = try? c.decodeIfPresent(String.self, forKey: .createdAt) {
+            createdAt = s
+        } else if let n = try? c.decodeIfPresent(Int64.self, forKey: .createdAt) {
+            createdAt = String(n)
+        } else {
+            createdAt = nil
+        }
+        if let v = try? c.decodeIfPresent(Double.self, forKey: .rating) { rating = v }
+        else if let v = try? c.decodeIfPresent(Int.self, forKey: .rating) { rating = Double(v) }
+        else { rating = nil }
+        if let v = try? c.decodeIfPresent(Int.self, forKey: .userRatingsTotal) { userRatingsTotal = v }
+        else if let v = try? c.decodeIfPresent(Double.self, forKey: .userRatingsTotal) { userRatingsTotal = Int(v) }
+        else { userRatingsTotal = nil }
+        if let v = try? c.decodeIfPresent(Double.self, forKey: .latitude) { latitude = v }
+        else { latitude = nil }
+        if let v = try? c.decodeIfPresent(Double.self, forKey: .longitude) { longitude = v }
+        else { longitude = nil }
+        if let v = try? c.decodeIfPresent(Double.self, forKey: .quietScore) { quietScore = v }
+        else if let v = try? c.decodeIfPresent(Int.self, forKey: .quietScore) { quietScore = Double(v) }
+        else { quietScore = nil }
+    }
+
     func toPlace() -> Place {
         Place(
-            id: googlePlaceId ?? "\(id ?? 0)",
+            id: googlePlaceId ?? (id ?? "0"),
             googlePlaceId: googlePlaceId,
             name: name ?? "Unknown",
             type: placeType ?? "place",

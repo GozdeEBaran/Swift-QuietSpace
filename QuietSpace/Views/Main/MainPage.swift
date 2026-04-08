@@ -3,6 +3,8 @@ import SwiftUI
 import MapKit
 
 struct MainPage: View {
+    @EnvironmentObject private var auth: AuthStore
+
     @State private var searchText: String = ""
     @StateObject private var locationManager = LocationManager()
     @StateObject private var mapViewModel = MainMapViewModel()
@@ -15,129 +17,65 @@ struct MainPage: View {
         )
     )
     
+    @State private var selectedCategory: MainMapViewModel.Category = .all
+    @State private var searchRadius: Double = 5000
+    @State private var showMap = true
+    @State private var showTransit = false
+    @State private var showCommunityPlaces = false
+    @State private var showTimer = false
+
+    @State private var unreadNotifications = 0
+
     var body: some View {
         ZStack {
-            // Map View - shows all quiet spaces with same markers as React Native (gradient bubble + pin)
-            Map(position: $position) {
-                ForEach(mapViewModel.places) { place in
-                    Annotation(place.name, coordinate: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)) {
-                        // Use Button + selectedPlace instead of NavigationLink inside Map
-                        // This ensures @EnvironmentObject is properly available in PlaceDetailPage
-                        Button {
-                            selectedPlace = place
-                        } label: {
-                            PlaceMarkerView(place: place)
+            if showMap {
+                Map(position: $position) {
+                    ForEach(mapViewModel.places) { place in
+                        Annotation(place.name, coordinate: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)) {
+                            Button { selectedPlace = place } label: {
+                                PlaceMarkerView(place: place)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    }
+                    if showTransit {
+                        ForEach(mapViewModel.transitStops) { stop in
+                            Marker(stop.name ?? "Transit", coordinate: CLLocationCoordinate2D(latitude: stop.latitude, longitude: stop.longitude))
+                        }
                     }
                 }
-            }
-            .mapStyle(.standard)
-            .edgesIgnoringSafeArea(.all)
-            .navigationDestination(item: $selectedPlace) { place in
-                PlaceDetailPage(place: place)
+                .mapStyle(.standard)
+                .edgesIgnoringSafeArea(.all)
+                .navigationDestination(item: $selectedPlace) { place in
+                    PlaceDetailPage(place: place)
+                }
+            } else {
+                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
             }
             
             VStack {
-                // Top search bar
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        // Search bar
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            TextField("Find a space...", text: $searchText)
-                                .font(.subheadline)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(Color.white)
-                        .cornerRadius(8)
-                        .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
-                        
-                        // Nearby button
-                        Button(action: {}) {
-                            Text("Nearby")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color(red: 0.6, green: 0.8, blue: 0.7))
-                                .cornerRadius(8)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 50)
-                    .padding(.bottom, 12)
-                    
-                    // Category chips
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            CategoryChip(name: "All", isSelected: true)
-                            CategoryChip(name: "Libraries", isSelected: false)
-                            CategoryChip(name: "Cafes", isSelected: false)
-                            CategoryChip(name: "Parks", isSelected: false)
-                            CategoryChip(name: "Co-working", isSelected: false)
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                    .padding(.bottom, 12)
-                }
-                .background(Color.white.opacity(0.95))
+                header
                 
                 Spacer()
                 
-                // Featured location card at bottom
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        // Location image
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 80, height: 80)
-                            .cornerRadius(8)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .foregroundColor(.gray)
-                            )
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Featured QuietSpaces")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Text("The Quiet Corner")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                            HStack(spacing: 4) {
-                                Image(systemName: "star.fill")
-                                    .font(.caption)
-                                    .foregroundColor(.yellow)
-                                Text("4.5")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                Text("• 2.3 km away")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                if !showMap {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(mapViewModel.places) { place in
+                                PlaceCard(place: place) { selectedPlace = place }
                             }
                         }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
+                        .padding(.top, 8)
                     }
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(12)
-                    .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: -2)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-                    
-                    // Bottom navigation bar
-                    NavBar()
                 }
+
+                NavBar()
             }
         }
         .navigationBarHidden(true)
+        .sheet(isPresented: $showTimer) {
+            PomodoroTimerView()
+        }
         .onAppear {
             let coordinate: CLLocationCoordinate2D
             if let loc = locationManager.currentLocation {
@@ -153,7 +91,162 @@ struct MainPage: View {
                 )
             )
 
-            mapViewModel.loadAllQuietSpaces(around: coordinate)
+            mapViewModel.loadQuietSpaces(
+                around: coordinate,
+                radiusMeters: Int(searchRadius),
+                category: selectedCategory,
+                showCommunityPlaces: showCommunityPlaces
+            )
+
+            Task {
+                if let uid = auth.userId {
+                    unreadNotifications = await SupabaseService.shared.getUnreadNotificationCount(userId: uid)
+                } else {
+                    unreadNotifications = 0
+                }
+            }
+        }
+        .onChange(of: selectedCategory) { _, _ in reload() }
+        .onChange(of: searchRadius) { _, _ in reload() }
+        .onChange(of: showCommunityPlaces) { _, _ in reload() }
+        .onChange(of: showTransit) { _, new in
+            guard let loc = locationManager.currentLocation else { return }
+            if new { mapViewModel.loadTransitStops(around: loc.coordinate, radiusMeters: Int(searchRadius)) }
+            else { mapViewModel.transitStops = [] }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Hello, \(firstName)")
+                        .font(.title2.weight(.bold))
+                        .foregroundColor(.primary)
+                    Text("Find your quiet space")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                HStack(spacing: 10) {
+                    if auth.userId != nil {
+                        NavigationLink {
+                            NotificationsListView()
+                        } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bell")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .frame(width: 40, height: 40)
+                                    .background(Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                if unreadNotifications > 0 {
+                                    Text(unreadNotifications > 9 ? "9+" : "\(unreadNotifications)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(Color.red)
+                                        .clipShape(Capsule())
+                                        .offset(x: 6, y: -6)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Button {
+                        showTimer = true
+                    } label: {
+                        Image(systemName: "timer")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(width: 40, height: 40)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+
+                    if showMap {
+                        Button {
+                            showTransit.toggle()
+                        } label: {
+                            Image(systemName: "tram")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(showTransit ? .white : .blue)
+                                .frame(width: 40, height: 40)
+                                .background(showTransit ? Color.blue : Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Button {
+                        showMap.toggle()
+                    } label: {
+                        Image(systemName: showMap ? "list.bullet" : "map")
+                            .font(.system(size: 18, weight: .semibold))
+                            .frame(width: 40, height: 40)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(MainMapViewModel.Category.allCases) { c in
+                        Button {
+                            selectedCategory = c
+                        } label: {
+                            Text(c.label)
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(selectedCategory == c ? Color.blue.opacity(0.2) : Color.white)
+                                .foregroundColor(selectedCategory == c ? .blue : .gray)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Distance")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(Int(searchRadius / 1000)) km")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+                Slider(value: $searchRadius, in: 1000...20000, step: 500)
+                Toggle("Show community places", isOn: $showCommunityPlaces)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.top, 50)
+        .padding(.bottom, 12)
+        .background(Color.white.opacity(0.96))
+    }
+
+    private var firstName: String {
+        if let n = auth.fullName, let first = n.split(separator: " ").first { return String(first) }
+        return "Explorer"
+    }
+
+    private func reload() {
+        guard let loc = locationManager.currentLocation else { return }
+        mapViewModel.loadQuietSpaces(
+            around: loc.coordinate,
+            radiusMeters: Int(searchRadius),
+            category: selectedCategory,
+            showCommunityPlaces: showCommunityPlaces
+        )
+        if showTransit {
+            mapViewModel.loadTransitStops(around: loc.coordinate, radiusMeters: Int(searchRadius))
         }
     }
 }

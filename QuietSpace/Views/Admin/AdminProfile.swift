@@ -1,15 +1,12 @@
-
 import SwiftUI
 
+struct AdminProfile: View {
+    @EnvironmentObject var auth: AuthStore
 
-
-struct AdminProfile: View{
-    
     @State private var notificationsOn = true
     @State private var locationServicesOn = false
-    
-    
-    var body: some View{
+
+    var body: some View {
         
         
         ScrollView{
@@ -26,7 +23,7 @@ struct AdminProfile: View{
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     
-                    Text("admin@email.com")
+                    Text(auth.email ?? "admin@email.com")
                         .font(.title3)
                         .foregroundColor(.gray)
                 }
@@ -38,11 +35,14 @@ struct AdminProfile: View{
                 
                 
                 VStack(alignment: .leading, spacing: 12) {
-                    ScrollView(.horizontal){
-                        HStack(alignment: .center, spacing: 12) {
-                            PillNavLink(title: "User Manager", destination: AdminDashboard())
-                            PillNavLink(title: "Post Manager", destination: AdminDashboard())
-                            PillNavLink(title: "Location Manager", destination: AdminDashboard())
+                    NavigationLink(destination: AdminDashboard()) {
+                        HStack {
+                            Image(systemName: "rectangle.grid.2x2.fill")
+                            Text("Open Admin Dashboard")
+                                .fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
                         }
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,6 +50,7 @@ struct AdminProfile: View{
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
                     }
+                    .buttonStyle(.plain)
                 }
                 
                 VStack(alignment: .leading, spacing: 12) {
@@ -98,5 +99,6 @@ struct AdminProfile: View{
 #Preview {
     NavigationStack {
         AdminProfile()
+            .environmentObject(AuthStore())
     }
 }

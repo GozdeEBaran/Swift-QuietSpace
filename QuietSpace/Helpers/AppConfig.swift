@@ -7,6 +7,9 @@ struct AppConfig {
 
     static let googlePlacesAPIKey: String = Secrets.googlePlacesAPIKey
 
+    /// Google AI Studio / Gemini API key (same as React Native `AppConfig.geminiAPIKey`).
+    static let geminiAPIKey: String = Secrets.geminiAPIKey
+
     static let defaultLatitude: Double = 43.6532
     static let defaultLongitude: Double = -79.3832
 

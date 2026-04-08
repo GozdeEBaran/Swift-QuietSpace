@@ -20,6 +20,12 @@ final class AuthStore: ObservableObject {
                 let res = try await SupabaseService.shared.signIn(email: email, password: password)
                 self.userId = res.user?.id
                 self.email = res.user?.email
+                if let uid = res.user?.id {
+                    let profile = try? await SupabaseService.shared.getUserProfile(userId: uid)
+                    self.fullName = profile?.fullName
+                } else {
+                    self.fullName = nil
+                }
                 self.isLoading = false
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -58,6 +64,7 @@ final class AuthStore: ObservableObject {
                 let res = try await SupabaseService.shared.signUp(email: email, password: password, fullName: fullName)
                 self.userId = res.user?.id
                 self.email = res.user?.email
+                self.fullName = fullName
                 self.isLoading = false
             } catch {
                 self.errorMessage = error.localizedDescription
@@ -70,5 +77,10 @@ final class AuthStore: ObservableObject {
         SupabaseService.shared.signOut()
         userId = nil
         email = nil
+        fullName = nil
+    }
+
+    func updateCachedProfile(fullName: String?) {
+        self.fullName = fullName
     }
 }

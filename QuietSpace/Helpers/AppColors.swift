@@ -19,4 +19,7 @@ struct AppColors {
     var textOnPrimary: Color { .white }
     var surfaceVariant: Color { colorScheme == .dark ? Color(UIColor.systemGray5) : Color(UIColor.systemGray6) }
     var error: Color { .red }
+    var errorLight: Color { Color.red.opacity(0.15) }
+    var warning: Color { .orange }
+    var warningLight: Color { Color.orange.opacity(0.18) }
 }

@@ -58,7 +58,13 @@ final class SupabaseService {
             let msg = String(data: data, encoding: .utf8) ?? "unknown"
             throw NSError(domain: "SupabaseService", code: (resp as? HTTPURLResponse)?.statusCode ?? 0, userInfo: [NSLocalizedDescriptionKey: msg])
         }
-        return try decoder.decode(type, from: data)
+        do {
+            return try decoder.decode(type, from: data)
+        } catch {
+            let raw = String(data: data.prefix(500), encoding: .utf8) ?? "(non-utf8)"
+            print("[SupabaseService] decode \(type) FAILED: \(error)\nraw: \(raw)")
+            throw error
+        }
     }
 
     private func fetchRaw(req: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -127,25 +133,83 @@ final class SupabaseService {
         return rows.first
     }
 
-    func updateUserProfile(userId: String, fullName: String?, avatarUrl: String?) async throws {
+    func updateUserProfile(userId: String, fullName: String?, avatarUrl: String?, coverImageUrl: String? = nil) async throws {
         var updates: [String: Any] = [:]
         if let fn = fullName { updates["full_name"] = fn }
         if let av = avatarUrl { updates["avatar_url"] = av }
+        if let cv = coverImageUrl { updates["cover_image_url"] = cv }
         let body = try JSONSerialization.data(withJSONObject: updates)
         let q = [URLQueryItem(name: "id", value: "eq.\(userId)")]
         let req = try request(path: "profiles", method: "PATCH", query: q, body: body)
         _ = try await fetchRaw(req: req)
     }
 
+    func uploadAvatarImage(userId: String, data: Data, contentType: String = "image/jpeg") async throws -> String {
+        let file = "avatar_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
+        var uploadURL = storageBase
+        uploadURL.appendPathComponent("object")
+        uploadURL.appendPathComponent("avatars")
+        uploadURL.appendPathComponent(userId)
+        uploadURL.appendPathComponent(file)
+        var req = URLRequest(url: uploadURL)
+        req.httpMethod = "POST"
+        req.addValue(key, forHTTPHeaderField: "apikey")
+        req.addValue("Bearer \(authToken ?? key)", forHTTPHeaderField: "Authorization")
+        req.addValue(contentType, forHTTPHeaderField: "Content-Type")
+        req.addValue("true", forHTTPHeaderField: "x-upsert")
+        req.httpBody = data
+        let (_, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NSError(domain: "SupabaseService", code: 0, userInfo: [NSLocalizedDescriptionKey: "Avatar upload failed"])
+        }
+        _ = http
+        var publicURL = storageBase
+        publicURL.appendPathComponent("object")
+        publicURL.appendPathComponent("public")
+        publicURL.appendPathComponent("avatars")
+        publicURL.appendPathComponent(userId)
+        publicURL.appendPathComponent(file)
+        return publicURL.absoluteString
+    }
+
+    func uploadProfileCoverImage(userId: String, data: Data, contentType: String = "image/jpeg") async throws -> String {
+        let file = "cover_\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
+        var uploadURL = storageBase
+        uploadURL.appendPathComponent("object")
+        uploadURL.appendPathComponent("profile-covers")
+        uploadURL.appendPathComponent(userId)
+        uploadURL.appendPathComponent(file)
+        var req = URLRequest(url: uploadURL)
+        req.httpMethod = "POST"
+        req.addValue(key, forHTTPHeaderField: "apikey")
+        req.addValue("Bearer \(authToken ?? key)", forHTTPHeaderField: "Authorization")
+        req.addValue(contentType, forHTTPHeaderField: "Content-Type")
+        req.addValue("true", forHTTPHeaderField: "x-upsert")
+        req.httpBody = data
+        let (_, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NSError(domain: "SupabaseService", code: 0, userInfo: [NSLocalizedDescriptionKey: "Cover upload failed"])
+        }
+        _ = http
+        var publicURL = storageBase
+        publicURL.appendPathComponent("object")
+        publicURL.appendPathComponent("public")
+        publicURL.appendPathComponent("profile-covers")
+        publicURL.appendPathComponent(userId)
+        publicURL.appendPathComponent(file)
+        return publicURL.absoluteString
+    }
+
     func isAdmin(userId: String) async throws -> Bool {
         let q = [
-            URLQueryItem(name: "select", value: "role,is_admin"),
+            URLQueryItem(name: "select", value: "id,role,is_admin"),
             URLQueryItem(name: "id", value: "eq.\(userId)")
         ]
         let req = try request(path: "profiles", query: q)
-        let rows = try await fetch([UserProfile].self, req: req)
-        guard let profile = rows.first else { return false }
-        return profile.displayRole == "admin"
+        let rows = try await fetch([AdminCheckRow].self, req: req)
+        guard let row = rows.first else { return false }
+        if row.is_admin == true { return true }
+        return row.role == "admin"
     }
 
     func getAllUsers() async throws -> [UserProfile] {
@@ -171,6 +235,378 @@ final class SupabaseService {
         _ = try await fetchRaw(req: req)
     }
 
+    // MARK: - Community posts (admin)
+
+    func getPendingPosts() async throws -> [CommunityPost] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "status", value: "in.(pending,flagged)"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ]
+        let req = try request(path: "community_posts", query: q)
+        return try await fetch([CommunityPost].self, req: req)
+    }
+
+    func updatePostStatus(postId: String, status: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["status": status])
+        let q = [URLQueryItem(name: "id", value: "eq.\(postId)")]
+        let req = try request(path: "community_posts", method: "PATCH", query: q, body: body)
+        _ = try await fetchRaw(req: req)
+    }
+
+    func deletePost(postId: String) async throws {
+        let q = [URLQueryItem(name: "id", value: "eq.\(postId)")]
+        let req = try request(path: "community_posts", method: "DELETE", query: q)
+        _ = try await fetchRaw(req: req)
+    }
+
+    // MARK: - Notifications
+
+    func createNotification(
+        userId: String,
+        type: String,
+        title: String,
+        message: String,
+        metadata: [String: Any] = [:]
+    ) async throws {
+        let rpcPayload: [String: Any] = [
+            "p_user_id": userId,
+            "p_type": type,
+            "p_title": title,
+            "p_message": message,
+            "p_metadata": metadata
+        ]
+        let body = try JSONSerialization.data(withJSONObject: rpcPayload)
+        let rpcReq = try request(path: "rpc/create_notification", method: "POST", body: body,
+                                  extraHeaders: ["Prefer": "return=minimal"])
+
+        let (_, rpcResp) = try await session.data(for: rpcReq)
+        if let http = rpcResp as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
+            return
+        }
+
+        var direct: [String: Any] = [
+            "user_id": userId,
+            "type": type,
+            "title": title,
+            "message": message,
+            "metadata": metadata,
+            "is_read": false
+        ]
+        direct["created_at"] = ISO8601DateFormatter().string(from: Date())
+        let insertBody = try JSONSerialization.data(withJSONObject: direct)
+        let insertReq = try request(path: "notifications", method: "POST", body: insertBody,
+                                     extraHeaders: ["Prefer": "return=minimal"])
+        _ = try await fetchRaw(req: insertReq)
+    }
+
+    func getUnreadNotificationCount(userId: String) async -> Int {
+        do {
+            let q = [
+                URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+                URLQueryItem(name: "is_read", value: "eq.false"),
+                URLQueryItem(name: "select", value: "id")
+            ]
+            var req = try request(path: "notifications", query: q)
+            req.setValue("exact", forHTTPHeaderField: "Prefer")
+            req.setValue("0-0", forHTTPHeaderField: "Range")
+            let (_, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let range = http.value(forHTTPHeaderField: "Content-Range") else {
+                return 0
+            }
+            let parts = range.split(separator: "/")
+            guard parts.count == 2, let n = Int(parts[1]) else { return 0 }
+            return n
+        } catch {
+            return 0
+        }
+    }
+
+    func getNotifications(userId: String, limit: Int = 50) async throws -> [AppNotification] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "order", value: "created_at.desc"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        let req = try request(path: "notifications", query: q)
+        return try await fetch([AppNotification].self, req: req)
+    }
+
+    func markNotificationAsRead(notificationId: String) async throws {
+        let patchBody = try JSONSerialization.data(withJSONObject: ["is_read": true])
+        let q = [URLQueryItem(name: "id", value: "eq.\(notificationId)")]
+        let patchReq = try request(path: "notifications", method: "PATCH", query: q, body: patchBody)
+        _ = try await fetchRaw(req: patchReq)
+    }
+
+    func markAllNotificationsAsRead(userId: String) async throws {
+        let patchBody = try JSONSerialization.data(withJSONObject: ["is_read": true])
+        let q = [
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "is_read", value: "eq.false")
+        ]
+        let patchReq = try request(path: "notifications", method: "PATCH", query: q, body: patchBody)
+        _ = try await fetchRaw(req: patchReq)
+    }
+
+    // MARK: - Community feed
+
+    func getApprovedCommunityPosts(limit: Int = 20) async throws -> [CommunityPost] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "status", value: "eq.approved"),
+            URLQueryItem(name: "order", value: "created_at.desc"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        let req = try request(path: "community_posts", query: q)
+        return try await fetch([CommunityPost].self, req: req)
+    }
+
+    func getUserLikedPostIds(userId: String) async throws -> [String] {
+        let q = [
+            URLQueryItem(name: "select", value: "post_id"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)")
+        ]
+        let req = try request(path: "post_likes", query: q)
+        let rows = try await fetch([PostLikeRow].self, req: req)
+        return rows.compactMap(\.post_id)
+    }
+
+    func getUserLikedCommentIds(userId: String) async throws -> [String] {
+        let q = [
+            URLQueryItem(name: "select", value: "comment_id"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)")
+        ]
+        let req = try request(path: "comment_likes", query: q)
+        let rows = try await fetch([CommentLikeRow].self, req: req)
+        return rows.compactMap(\.comment_id)
+    }
+
+    func getTopCommentsForPost(postId: String, limit: Int = 3) async throws -> [PostComment] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "post_id", value: "eq.\(postId)"),
+            URLQueryItem(name: "parent_comment_id", value: "is.null"),
+            URLQueryItem(name: "order", value: "created_at.desc"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        let req = try request(path: "post_comments", query: q)
+        return try await fetch([PostComment].self, req: req)
+    }
+
+    func getComments(postId: String) async throws -> [PostComment] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "post_id", value: "eq.\(postId)"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ]
+        let req = try request(path: "post_comments", query: q)
+        return try await fetch([PostComment].self, req: req)
+    }
+
+    struct ToggleResult: Sendable {
+        let isLiked: Bool
+        let likesCount: Int
+    }
+
+    func toggleLike(postId: String, userId: String) async throws -> ToggleResult {
+        let checkQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "post_id", value: "eq.\(postId)"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)")
+        ]
+        let checkReq = try request(path: "post_likes", query: checkQ)
+        let existing = try await fetch([IdRow].self, req: checkReq)
+
+        if existing.isEmpty {
+            let insert: [String: Any] = [
+                "post_id": postId,
+                "user_id": userId,
+                "created_at": Int64(Date().timeIntervalSince1970 * 1000)
+            ]
+            let body = try JSONSerialization.data(withJSONObject: insert)
+            let insReq = try request(path: "post_likes", method: "POST", body: body,
+                                       extraHeaders: ["Prefer": "return=minimal"])
+            _ = try await fetchRaw(req: insReq)
+        } else {
+            let delQ = [
+                URLQueryItem(name: "post_id", value: "eq.\(postId)"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId)")
+            ]
+            let delReq = try request(path: "post_likes", method: "DELETE", query: delQ)
+            _ = try await fetchRaw(req: delReq)
+        }
+
+        let countQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "post_id", value: "eq.\(postId)")
+        ]
+        let countReq = try request(path: "post_likes", query: countQ)
+        let likes = try await fetch([IdRow].self, req: countReq)
+        let likesCount = likes.count
+
+        let patchBody = try JSONSerialization.data(withJSONObject: ["likes_count": likesCount])
+        let patchQ = [URLQueryItem(name: "id", value: "eq.\(postId)")]
+        let patchReq = try request(path: "community_posts", method: "PATCH", query: patchQ, body: patchBody)
+        _ = try await fetchRaw(req: patchReq)
+
+        let likedQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "post_id", value: "eq.\(postId)"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)")
+        ]
+        let likedReq = try request(path: "post_likes", query: likedQ)
+        let still = try await fetch([IdRow].self, req: likedReq)
+        return ToggleResult(isLiked: !still.isEmpty, likesCount: likesCount)
+    }
+
+    func toggleCommentLike(commentId: String, userId: String) async throws -> ToggleResult {
+        let checkQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "comment_id", value: "eq.\(commentId)"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)")
+        ]
+        let checkReq = try request(path: "comment_likes", query: checkQ)
+        let existing = try await fetch([IdRow].self, req: checkReq)
+
+        if existing.isEmpty {
+            let insert: [String: Any] = [
+                "comment_id": commentId,
+                "user_id": userId
+            ]
+            let body = try JSONSerialization.data(withJSONObject: insert)
+            let insReq = try request(path: "comment_likes", method: "POST", body: body,
+                                       extraHeaders: ["Prefer": "return=minimal"])
+            _ = try await fetchRaw(req: insReq)
+        } else {
+            let delQ = [
+                URLQueryItem(name: "comment_id", value: "eq.\(commentId)"),
+                URLQueryItem(name: "user_id", value: "eq.\(userId)")
+            ]
+            let delReq = try request(path: "comment_likes", method: "DELETE", query: delQ)
+            _ = try await fetchRaw(req: delReq)
+        }
+
+        let countQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "comment_id", value: "eq.\(commentId)")
+        ]
+        let countReq = try request(path: "comment_likes", query: countQ)
+        let likes = try await fetch([IdRow].self, req: countReq)
+        let likesCount = likes.count
+
+        let patchBody = try JSONSerialization.data(withJSONObject: ["likes_count": likesCount])
+        let patchQ = [URLQueryItem(name: "id", value: "eq.\(commentId)")]
+        let patchReq = try request(path: "post_comments", method: "PATCH", query: patchQ, body: patchBody)
+        _ = try await fetchRaw(req: patchReq)
+
+        let likedQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "comment_id", value: "eq.\(commentId)"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)")
+        ]
+        let likedReq = try request(path: "comment_likes", query: likedQ)
+        let still = try await fetch([IdRow].self, req: likedReq)
+        return ToggleResult(isLiked: !still.isEmpty, likesCount: likesCount)
+    }
+
+    func flagPost(postId: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["p_post_id": postId])
+        let req = try request(path: "rpc/flag_community_post", method: "POST", body: body,
+                               extraHeaders: ["Prefer": "return=minimal"])
+        _ = try await fetchRaw(req: req)
+    }
+
+    func createPost(
+        userId: String,
+        userName: String,
+        userAvatarUrl: String?,
+        placeName: String,
+        caption: String,
+        category: String,
+        imageUrl: String?
+    ) async throws {
+        let createdAt = Int64(Date().timeIntervalSince1970 * 1000)
+        var dict: [String: Any] = [
+            "user_id": userId,
+            "user_name": userName,
+            "place_name": placeName,
+            "caption": caption,
+            "category": category,
+            "likes_count": 0,
+            "comments_count": 0,
+            "created_at": createdAt
+        ]
+        if let av = userAvatarUrl { dict["user_avatar_url"] = av }
+        if let img = imageUrl { dict["image_url"] = img }
+        let body = try JSONSerialization.data(withJSONObject: dict)
+        let req = try request(path: "community_posts", method: "POST", body: body,
+                               extraHeaders: ["Prefer": "return=minimal"])
+        _ = try await fetchRaw(req: req)
+    }
+
+    func addComment(_ insert: PostCommentInsert) async throws {
+        let body = try encode(insert)
+        let req = try request(path: "post_comments", method: "POST", body: body,
+                               extraHeaders: ["Prefer": "return=representation"])
+        let rows = try await fetch([PostComment].self, req: req)
+        if let postId = rows.first?.postId {
+            try await updateCommentsCount(postId: postId)
+        }
+    }
+
+    func addReply(parentCommentId: String, reply: ReplyInsert) async throws {
+        let body = try encode(reply)
+        let req = try request(path: "post_comments", method: "POST", body: body,
+                               extraHeaders: ["Prefer": "return=representation"])
+        _ = try await fetchRaw(req: req)
+        try await updateCommentsCount(postId: reply.postId)
+    }
+
+    private func updateCommentsCount(postId: String) async throws {
+        let countQ = [
+            URLQueryItem(name: "select", value: "id"),
+            URLQueryItem(name: "post_id", value: "eq.\(postId)")
+        ]
+        let countReq = try request(path: "post_comments", query: countQ)
+        let rows = try await fetch([IdRow].self, req: countReq)
+        let c = rows.count
+        let patchBody = try JSONSerialization.data(withJSONObject: ["comments_count": c])
+        let patchQ = [URLQueryItem(name: "id", value: "eq.\(postId)")]
+        let patchReq = try request(path: "community_posts", method: "PATCH", query: patchQ, body: patchBody)
+        _ = try await fetchRaw(req: patchReq)
+    }
+
+    func uploadCommunityPostImage(userId: String, data: Data, contentType: String = "image/jpeg") async throws -> String {
+        let file = "\(Int(Date().timeIntervalSince1970 * 1000)).jpg"
+        var uploadURL = storageBase
+        uploadURL.appendPathComponent("object")
+        uploadURL.appendPathComponent("community-posts")
+        uploadURL.appendPathComponent(userId)
+        uploadURL.appendPathComponent(file)
+        var req = URLRequest(url: uploadURL)
+        req.httpMethod = "POST"
+        req.addValue(key, forHTTPHeaderField: "apikey")
+        req.addValue("Bearer \(authToken ?? key)", forHTTPHeaderField: "Authorization")
+        req.addValue(contentType, forHTTPHeaderField: "Content-Type")
+        req.addValue("false", forHTTPHeaderField: "x-upsert")
+        req.httpBody = data
+        let (_, resp) = try await session.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NSError(domain: "SupabaseService", code: 0, userInfo: [NSLocalizedDescriptionKey: "Image upload failed"])
+        }
+        _ = http
+        var publicURL = storageBase
+        publicURL.appendPathComponent("object")
+        publicURL.appendPathComponent("public")
+        publicURL.appendPathComponent("community-posts")
+        publicURL.appendPathComponent(userId)
+        publicURL.appendPathComponent(file)
+        return publicURL.absoluteString
+    }
+
     // MARK: - Favorites
 
     func getFavorites(userId: String) async throws -> [FavoritePlace] {
@@ -181,6 +617,31 @@ final class SupabaseService {
         ]
         let req = try request(path: "user_favorites", query: q)
         return try await fetch([FavoritePlace].self, req: req)
+    }
+
+    // MARK: - Check-ins
+
+    func getUserCheckIns(userId: String, limit: Int = 20) async throws -> [CheckIn] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "order", value: "created_at.desc"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        let req = try request(path: "check_ins", query: q)
+        return try await fetch([CheckIn].self, req: req)
+    }
+
+    func getUserCommunityPosts(userId: String, limit: Int = 20) async throws -> [CommunityPost] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "status", value: "in.(approved,flagged)"),
+            URLQueryItem(name: "order", value: "created_at.desc"),
+            URLQueryItem(name: "limit", value: "\(limit)")
+        ]
+        let req = try request(path: "community_posts", query: q)
+        return try await fetch([CommunityPost].self, req: req)
     }
 
     func addFavorite(userId: String, place: Place) async throws {
@@ -232,7 +693,26 @@ final class SupabaseService {
         return try await fetch([LocationSubmission].self, req: req)
     }
 
-    func updateLocationSubmissionStatus(id: Int, status: String, adminNotes: String? = nil) async throws {
+    func getPendingLocationSubmissionsForAdmin() async throws -> [LocationSubmissionAdmin] {
+        let q = [
+            URLQueryItem(
+                name: "select",
+                value: "id,user_id,name,address,type,description,latitude,longitude,quiet_score,image_url,status,admin_notes,created_at,profiles(full_name,avatar_url)"
+            ),
+            URLQueryItem(name: "status", value: "eq.pending"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ]
+        let req = try request(path: "location_submissions", query: q)
+        do {
+            let rows = try await fetch([LocationSubmissionJoinedRow].self, req: req)
+            return rows.map(\.toAdmin)
+        } catch {
+            let subs = try await getLocationSubmissions(status: "pending")
+            return subs.map { LocationSubmissionAdmin(submission: $0, submitterName: nil) }
+        }
+    }
+
+    func updateLocationSubmissionStatus(id: String, status: String, adminNotes: String? = nil) async throws {
         var dict: [String: Any] = ["status": status]
         if let notes = adminNotes { dict["admin_notes"] = notes }
         let body = try JSONSerialization.data(withJSONObject: dict)
@@ -259,5 +739,59 @@ final class SupabaseService {
             let req = try request(path: table, method: "DELETE", query: q)
             _ = try await fetchRaw(req: req)
         }
+    }
+}
+
+// MARK: - Community feed DTOs
+
+private struct PostLikeRow: Decodable { let post_id: String? }
+private struct CommentLikeRow: Decodable { let comment_id: String? }
+private struct IdRow: Decodable { let id: String? }
+private struct AdminCheckRow: Decodable {
+    let id: String
+    let role: String?
+    let is_admin: Bool?
+}
+
+// MARK: - Location submission + profile join (admin)
+
+private struct LocationSubmissionJoinedRow: Decodable {
+    struct ProfileJoin: Decodable {
+        let full_name: String?
+        let avatar_url: String?
+    }
+
+    let id: String?
+    let user_id: String?
+    let name: String?
+    let address: String?
+    let type: String?
+    let description: String?
+    let latitude: Double?
+    let longitude: Double?
+    let quiet_score: Double?
+    let image_url: String?
+    let status: String?
+    let admin_notes: String?
+    let created_at: String?
+    let profiles: ProfileJoin?
+
+    var toAdmin: LocationSubmissionAdmin {
+        let submission = LocationSubmission(
+            id: id,
+            userId: user_id,
+            name: name,
+            address: address,
+            type: type,
+            description: description,
+            latitude: latitude,
+            longitude: longitude,
+            quietScore: quiet_score,
+            imageUrl: image_url,
+            status: status,
+            adminNotes: admin_notes,
+            createdAt: created_at
+        )
+        return LocationSubmissionAdmin(submission: submission, submitterName: profiles?.full_name)
     }
 }

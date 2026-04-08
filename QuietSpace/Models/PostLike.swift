@@ -1,8 +1,8 @@
 import Foundation
 
 struct PostLike: Identifiable, Codable {
-    let id: Int?
-    let postId: Int?
+    let id: String?
+    let postId: String?
     let userId: String?
     let createdAt: String?
 
@@ -15,8 +15,8 @@ struct PostLike: Identifiable, Codable {
 }
 
 struct CommentLike: Identifiable, Codable {
-    let id: Int?
-    let commentId: Int?
+    let id: String?
+    let commentId: String?
     let userId: String?
     let createdAt: String?
 

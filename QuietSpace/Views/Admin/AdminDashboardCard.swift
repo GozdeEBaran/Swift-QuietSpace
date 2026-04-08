@@ -52,7 +52,23 @@ struct AdminDashboardCard: View {
                 }
 
                 HStack(spacing: 10) {
-                    NavigationLink(destination: ReviewLocation()) {
+                    NavigationLink(destination: ReviewLocation(
+                        submission: LocationSubmission(
+                            id: "0",
+                            userId: nil,
+                            name: title,
+                            address: "",
+                            type: "",
+                            description: nil,
+                            latitude: nil,
+                            longitude: nil,
+                            quietScore: nil,
+                            imageUrl: nil,
+                            status: "pending",
+                            adminNotes: nil,
+                            createdAt: nil
+                        )
+                    )) {
                         Text("Review")
                             .font(.subheadline)
                             .fontWeight(.semibold)
