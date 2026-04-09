@@ -387,6 +387,7 @@ struct UserProfileView: View {
             let checkIns = (try? await SupabaseService.shared.getUserCheckIns(userId: uid, limit: 20)) ?? []
             let favorites = (try? await SupabaseService.shared.getFavorites(userId: uid)) ?? []
             let posts = (try? await SupabaseService.shared.getUserCommunityPosts(userId: uid, limit: 20)) ?? []
+            let submissions = (try? await SupabaseService.shared.getMyLocationSubmissions(userId: uid)) ?? []
 
             postCount = posts.count
 
@@ -418,8 +419,24 @@ struct UserProfileView: View {
                     createdAt: p.createdAt
                 )
             })
+            acts.append(contentsOf: submissions.map { s in
+                let statusIcon: String
+                switch s.status {
+                case "approved": statusIcon = "checkmark.seal.fill"
+                case "rejected": statusIcon = "xmark.seal.fill"
+                default:         statusIcon = "clock.fill"          // pending
+                }
+                let statusLabel = (s.status ?? "pending").capitalized
+                return ProfileActivity(
+                    id: "sub-\(s.id ?? "0")-\(s.createdAt ?? "")",
+                    icon: statusIcon,
+                    title: "Submitted \"\(s.name ?? "a location")\"",
+                    subtitle: "\(statusLabel) · \(CommunityHelpers.timeAgo(from: s.createdAt))",
+                    createdAt: s.createdAt
+                )
+            })
 
-            recentActivities = Array(acts.sorted(by: { ($0.createdAt ?? "") > ($1.createdAt ?? "") }).prefix(5))
+            recentActivities = Array(acts.sorted(by: { ($0.createdAt ?? "") > ($1.createdAt ?? "") }).prefix(8))
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -17,6 +17,7 @@ struct QuietSpaceApp: App {
                     LoginPage()
                 }
             }
+            .id(auth.isLoggedIn) // forces full stack reset on sign-in / sign-out
             .environmentObject(auth)
             .environmentObject(favoritesVM)
             .environmentObject(placesStore)

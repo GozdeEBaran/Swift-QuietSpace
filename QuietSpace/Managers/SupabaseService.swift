@@ -725,6 +725,17 @@ final class SupabaseService {
         return try await getLocationSubmissions(status: "approved")
     }
 
+    /// Returns all submissions (any status) for a specific user.
+    func getMyLocationSubmissions(userId: String) async throws -> [LocationSubmission] {
+        let q = [
+            URLQueryItem(name: "select", value: "*"),
+            URLQueryItem(name: "user_id", value: "eq.\(userId)"),
+            URLQueryItem(name: "order", value: "created_at.desc")
+        ]
+        let req = try request(path: "location_submissions", query: q)
+        return try await fetch([LocationSubmission].self, req: req)
+    }
+
     // MARK: - Delete user account (admin)
 
     func deleteUserAccount(userId: String) async throws {
