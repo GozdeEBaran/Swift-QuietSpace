@@ -1,9 +1,16 @@
 // MainPage.swift
 import SwiftUI
 import MapKit
+import CoreLocation
+
+private struct AddLocationSheetItem: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+}
 
 struct MainPage: View {
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var placesStore: UserAddedPlacesStore
 
     @State private var searchText: String = ""
     @StateObject private var locationManager = LocationManager()
@@ -26,11 +33,14 @@ struct MainPage: View {
 
     @State private var unreadNotifications = 0
 
+    @State private var addLocationSheet: AddLocationSheetItem?
+    @State private var showAddLocationUnavailableAlert = false
+
     var body: some View {
         ZStack {
             if showMap {
                 Map(position: $position) {
-                    ForEach(mapViewModel.places) { place in
+                    ForEach(combinedPlaces) { place in
                         Annotation(place.name, coordinate: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)) {
                             Button { selectedPlace = place } label: {
                                 PlaceMarkerView(place: place)
@@ -61,7 +71,7 @@ struct MainPage: View {
                 if !showMap {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(mapViewModel.places) { place in
+                            ForEach(combinedPlaces) { place in
                                 PlaceCard(place: place) { selectedPlace = place }
                             }
                         }
@@ -69,14 +79,43 @@ struct MainPage: View {
                     }
                 }
 
-                NavBar()
+                NavBar(isRoot: true)
+            }
+
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if showMap {
+                Button {
+                    presentAddLocation()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.blue)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.25), radius: 6, x: 0, y: 3)
+                }
+                .padding(.trailing, 20)
+                .padding(.bottom, 90)
             }
         }
         .navigationBarHidden(true)
         .sheet(isPresented: $showTimer) {
             PomodoroTimerView()
         }
+        .sheet(item: $addLocationSheet) { item in
+            AddLocationView(coordinate: item.coordinate) { place in
+                placesStore.add(place)
+            }
+        }
+        .alert("Location unavailable", isPresented: $showAddLocationUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Could not read your current position. Try again after enabling Location Services for QuietSpace in Settings.")
+        }
         .onAppear {
+            locationManager.startIfNeeded()
             let coordinate: CLLocationCoordinate2D
             if let loc = locationManager.currentLocation {
                 coordinate = loc.coordinate
@@ -232,9 +271,25 @@ struct MainPage: View {
         .background(Color.white.opacity(0.96))
     }
 
+    /// API places + session-local user-added places, filtered by the active category chip.
+    private var combinedPlaces: [Place] {
+        let extra = placesStore.places.filter {
+            selectedCategory == .all || $0.type == selectedCategory.rawValue
+        }
+        return mapViewModel.places + extra
+    }
+
     private var firstName: String {
         if let n = auth.fullName, let first = n.split(separator: " ").first { return String(first) }
         return "Explorer"
+    }
+
+    private func presentAddLocation() {
+        guard let loc = locationManager.currentLocation else {
+            showAddLocationUnavailableAlert = true
+            return
+        }
+        addLocationSheet = AddLocationSheetItem(coordinate: loc.coordinate)
     }
 
     private func reload() {

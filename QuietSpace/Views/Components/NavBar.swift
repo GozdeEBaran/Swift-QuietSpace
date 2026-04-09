@@ -8,11 +8,15 @@
 import SwiftUI
 
 struct NavBar: View {
+    /// Pass true only from MainPage (the root) so Home does not try to dismiss the root.
+    var isRoot: Bool = false
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         HStack {
             Spacer()
             
-            Button(action: {}) {
+            Button(action: { if !isRoot { dismiss() } }) {
                 VStack(spacing: 4) {
                     Image(systemName: "house.fill")
                         .font(.system(size: 24))

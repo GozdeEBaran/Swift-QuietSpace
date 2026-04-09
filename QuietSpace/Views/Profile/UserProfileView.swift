@@ -1,10 +1,20 @@
 
 import SwiftUI
+import CoreLocation
 
+private struct AddLocationProfileItem: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
+}
 
 struct UserProfileView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var placesStore: UserAddedPlacesStore
+
+    @StateObject private var locationManager = LocationManager()
+    @State private var addLocationItem: AddLocationProfileItem?
+    @State private var showLocationUnavailableAlert = false
 
     @State private var profile: UserProfile?
     @State private var isAdmin = false
@@ -31,7 +41,20 @@ struct UserProfileView: View {
         }
         .navigationBarHidden(true)
         .background(colors.background)
-        .task { await load() }
+        .task {
+            locationManager.startIfNeeded()
+            await load()
+        }
+        .sheet(item: $addLocationItem) { item in
+            AddLocationView(coordinate: item.coordinate) { place in
+                placesStore.add(place)
+            }
+        }
+        .alert("Location unavailable", isPresented: $showLocationUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Enable Location Services for QuietSpace in Settings to add locations.")
+        }
         .alert("Error", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -215,6 +238,9 @@ struct UserProfileView: View {
                     NavigationLink { CommunityPage() } label: {
                         quickActionLabel(icon: "bubble.left.and.bubble.right", title: "Community")
                     }
+                    Button { presentAddLocation() } label: {
+                        quickActionLabel(icon: "mappin.and.ellipse", title: "Add Location")
+                    }
                     NavigationLink { ProfileSettingsView() } label: {
                         quickActionLabel(icon: "gearshape", title: "Settings")
                     }
@@ -223,6 +249,14 @@ struct UserProfileView: View {
             }
         }
         .padding(.top, 8)
+    }
+
+    private func presentAddLocation() {
+        guard let loc = locationManager.currentLocation else {
+            showLocationUnavailableAlert = true
+            return
+        }
+        addLocationItem = AddLocationProfileItem(coordinate: loc.coordinate)
     }
 
     private func quickActionLabel(icon: String, title: String) -> some View {
@@ -246,6 +280,24 @@ struct UserProfileView: View {
         )
     }
 
+    /// User-added places from the shared store, as ProfileActivity rows.
+    private var addedPlaceActivities: [ProfileActivity] {
+        placesStore.places.map { place in
+            ProfileActivity(
+                id: "added-\(place.id)",
+                icon: "mappin.and.ellipse",
+                title: "Added \"\(place.name)\"",
+                subtitle: "just now",
+                createdAt: nil
+            )
+        }
+    }
+
+    private var allRecentActivities: [ProfileActivity] {
+        // User-added locations always appear first (most recent), followed by Supabase activities.
+        addedPlaceActivities + recentActivities
+    }
+
     private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Recent Activity")
@@ -257,7 +309,7 @@ struct UserProfileView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 24)
-            } else if recentActivities.isEmpty {
+            } else if allRecentActivities.isEmpty {
                 Text("No recent activity")
                     .font(.subheadline)
                     .foregroundColor(colors.textSecondary)
@@ -265,7 +317,7 @@ struct UserProfileView: View {
                     .padding(.vertical, 10)
             } else {
                 VStack(spacing: 10) {
-                    ForEach(recentActivities) { a in
+                    ForEach(allRecentActivities) { a in
                         activityRow(a)
                             .padding(.horizontal, 16)
                     }
@@ -367,7 +419,7 @@ struct UserProfileView: View {
                 )
             })
 
-            recentActivities = Array(acts.sorted(by: { ($0.createdAt ?? "") > ($1.createdAt ?? "") }).prefix(3))
+            recentActivities = Array(acts.sorted(by: { ($0.createdAt ?? "") > ($1.createdAt ?? "") }).prefix(5))
         } catch {
             errorMessage = error.localizedDescription
         }

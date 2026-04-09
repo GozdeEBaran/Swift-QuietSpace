@@ -6,6 +6,7 @@ import SwiftUI
 struct QuietSpaceApp: App {
     @StateObject private var auth = AuthStore()
     @StateObject private var favoritesVM = FavoritesViewModel()  // Shared across all views
+    @StateObject private var placesStore = UserAddedPlacesStore() // Shared user-added locations
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +19,7 @@ struct QuietSpaceApp: App {
             }
             .environmentObject(auth)
             .environmentObject(favoritesVM)
+            .environmentObject(placesStore)
             
             
         }
