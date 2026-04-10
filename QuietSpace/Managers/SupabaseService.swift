@@ -83,10 +83,24 @@ final class SupabaseService {
     }
 
     // MARK: - Auth
+    
+    private let defaults = UserDefaults.standard
+
+    private enum SessionKeys {
+        static let accessToken = "qs.accessToken"
+        static let refreshToken = "qs.refreshToken"
+        static let userId = "qs.userId"
+        static let email = "qs.email"
+    }
 
     struct AuthResponse: Decodable {
-        struct User: Decodable { let id: String; let email: String? }
+        struct User: Decodable {
+            let id: String
+            let email: String?
+        }
+
         let access_token: String?
+        let refresh_token: String?
         let user: User?
     }
 
@@ -97,29 +111,115 @@ final class SupabaseService {
             "password": password,
             "data": ["full_name": fullName]
         ]
-        var req = try request(base: authBase, path: "signup", method: "POST",
-                               body: try JSONSerialization.data(withJSONObject: body))
+        var req = try request(
+            base: authBase,
+            path: "signup",
+            method: "POST",
+            body: try JSONSerialization.data(withJSONObject: body)
+        )
         req.setValue(nil, forHTTPHeaderField: "Authorization")
         req.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+
         let result = try await fetch(AuthResponse.self, req: req)
-        if let token = result.access_token { authToken = token }
+        saveSession(result)
         return result
     }
 
     @discardableResult
     func signIn(email: String, password: String) async throws -> AuthResponse {
-        let body: [String: Any] = ["email": email, "password": password]
-        var req = try request(base: authBase, path: "token", method: "POST",
-                               query: [URLQueryItem(name: "grant_type", value: "password")],
-                               body: try JSONSerialization.data(withJSONObject: body))
+        let body: [String: Any] = [
+            "email": email,
+            "password": password
+        ]
+        var req = try request(
+            base: authBase,
+            path: "token",
+            method: "POST",
+            query: [URLQueryItem(name: "grant_type", value: "password")],
+            body: try JSONSerialization.data(withJSONObject: body)
+        )
         req.setValue(nil, forHTTPHeaderField: "Authorization")
         req.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+
         let result = try await fetch(AuthResponse.self, req: req)
-        if let token = result.access_token { authToken = token }
+        saveSession(result)
         return result
     }
 
-    func signOut() { authToken = key }
+    func signOut() {
+        clearSavedSession()
+    }
+    
+    private func saveSession(_ response: AuthResponse) {
+        if let access = response.access_token {
+            authToken = access
+            defaults.set(access, forKey: SessionKeys.accessToken)
+        }
+
+        if let refresh = response.refresh_token {
+            defaults.set(refresh, forKey: SessionKeys.refreshToken)
+        }
+
+        if let user = response.user {
+            defaults.set(user.id, forKey: SessionKeys.userId)
+            defaults.set(user.email, forKey: SessionKeys.email)
+        }
+    }
+
+    private func clearSavedSession() {
+        authToken = key
+        defaults.removeObject(forKey: SessionKeys.accessToken)
+        defaults.removeObject(forKey: SessionKeys.refreshToken)
+        defaults.removeObject(forKey: SessionKeys.userId)
+        defaults.removeObject(forKey: SessionKeys.email)
+    }
+
+    struct RestoredSession {
+        let userId: String
+        let email: String?
+        let fullName: String?
+    }
+    
+    func restoreSession() async throws -> RestoredSession? {
+        guard let refreshToken = defaults.string(forKey: SessionKeys.refreshToken) else {
+            return nil
+        }
+
+        let body: [String: Any] = [
+            "refresh_token": refreshToken
+        ]
+
+        var req = try request(
+            base: authBase,
+            path: "token",
+            method: "POST",
+            query: [URLQueryItem(name: "grant_type", value: "refresh_token")],
+            body: try JSONSerialization.data(withJSONObject: body)
+        )
+        req.setValue(nil, forHTTPHeaderField: "Authorization")
+        req.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let result = try await fetch(AuthResponse.self, req: req)
+            saveSession(result)
+
+            guard let uid = result.user?.id ?? defaults.string(forKey: SessionKeys.userId) else {
+                return nil
+            }
+
+            let email = result.user?.email ?? defaults.string(forKey: SessionKeys.email)
+            let profile = try? await getUserProfile(userId: uid)
+
+            return RestoredSession(
+                userId: uid,
+                email: email,
+                fullName: profile?.fullName
+            )
+        } catch {
+            clearSavedSession()
+            return nil
+        }
+    }
 
     // MARK: - Profiles
 
