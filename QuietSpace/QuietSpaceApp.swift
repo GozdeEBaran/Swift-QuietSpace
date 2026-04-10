@@ -5,24 +5,24 @@ import SwiftUI
 @main
 struct QuietSpaceApp: App {
     @StateObject private var auth = AuthStore()
-    @StateObject private var favoritesVM = FavoritesViewModel()  // Shared across all views
-    @StateObject private var placesStore = UserAddedPlacesStore() // Shared user-added locations
+    @StateObject private var favoritesVM = FavoritesViewModel()
+    @StateObject private var placesStore = UserAddedPlacesStore()
 
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                if auth.isLoggedIn {
+                if auth.isLoading {
+                    ProgressView("Loading...")
+                } else if auth.isLoggedIn {
                     MainPage()
                 } else {
                     LoginPage()
                 }
             }
-            .id(auth.isLoggedIn) // forces full stack reset on sign-in / sign-out
+            .id(auth.isLoggedIn)
             .environmentObject(auth)
             .environmentObject(favoritesVM)
             .environmentObject(placesStore)
-            
-            
         }
     }
 }
