@@ -1,3 +1,9 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Refactored place card tap navigation to use selectedPlace + navigationDestination
+//   (replacing inline NavigationLink to ensure EnvironmentObjects are available)
+
 import SwiftUI
 
 struct SearchPage: View {

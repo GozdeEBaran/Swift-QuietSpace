@@ -1,3 +1,10 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Replaced hardcoded dummy favorites with real Supabase fetch (getFavorites)
+// - Refactored removeFavorite for optimistic UI (removes locally first, then deletes from Supabase)
+// - Added errorMessage published property for UI error handling
+
 import Foundation
 import Combine
 

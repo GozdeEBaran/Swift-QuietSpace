@@ -1,3 +1,11 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Created this file entirely
+// - Implemented the location profile card (photo header, quiet score, rating, info rows)
+// - Added Google Places photo URL construction from photoReference
+// - Wired "View Full Details" navigation to PlaceDetailPage
+
 import SwiftUI
 
 struct LocationProfileView: View {

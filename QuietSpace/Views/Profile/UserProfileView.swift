@@ -1,3 +1,8 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Added location submission history to the activity feed
+// - Fetches user's submissions from Supabase and displays status (pending/approved/rejected)
 
 import SwiftUI
 import CoreLocation

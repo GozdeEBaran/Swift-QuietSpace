@@ -1,3 +1,10 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Created this file entirely
+// - Implemented the in-memory ObservableObject store for user-added places
+// - Used as a shared EnvironmentObject between MainPage and UserProfileView
+
 import Foundation
 import Combine
 

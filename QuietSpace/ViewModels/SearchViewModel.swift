@@ -1,3 +1,9 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Replaced dummy/hardcoded search logic with a real Google Places text search API call
+// - Implemented async/await Task with MainActor result dispatch
+
 import Foundation
 import Combine
 

@@ -1,3 +1,8 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Added tap-to-navigate from place card to LocationProfileView
+
 import SwiftUI
 
 struct FavoritesPage: View {

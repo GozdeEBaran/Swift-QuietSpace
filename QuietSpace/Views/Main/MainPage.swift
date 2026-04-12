@@ -1,4 +1,11 @@
 // MainPage.swift
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Added the + floating action button to open AddLocationView from the map
+// - Integrated UserAddedPlacesStore so user-added places appear on the map immediately
+// - Refactored map pin taps to use selectedPlace + navigationDestination for safe navigation
+
 import SwiftUI
 import MapKit
 import CoreLocation

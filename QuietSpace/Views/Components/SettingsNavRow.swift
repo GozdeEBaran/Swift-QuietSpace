@@ -2,7 +2,6 @@
 //  SettingsNavRow.swift
 //  QuietSpace
 //
-//  Created by Nadiia on 2026-02-08.
 //
 
 import SwiftUI

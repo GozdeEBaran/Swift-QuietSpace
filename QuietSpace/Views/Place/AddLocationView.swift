@@ -1,3 +1,10 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Created this file entirely
+// - Implemented the Add Location form (name, category, address, GPS coordinates)
+// - Added Supabase submission logic (status: pending, for admin review)
+
 import SwiftUI
 import CoreLocation
 

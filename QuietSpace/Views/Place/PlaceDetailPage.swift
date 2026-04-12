@@ -1,3 +1,11 @@
+// Name: Gozde Baran
+// Student ID: 101515982
+// Contribution:
+// - Implemented real favorites functionality (add/remove via Supabase)
+// - Added optimistic UI (isFavorite toggles instantly, reverts on error)
+// - Added isSaving state with loading spinner during Supabase call
+// - Wired favoritesVM.addLocally / removeLocally for instant Favorites tab updates
+
 import SwiftUI
 import MapKit
 
