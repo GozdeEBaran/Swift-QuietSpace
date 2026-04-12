@@ -1,7 +1,8 @@
+// Daniil Orlov - 101500729
+// logic for user registration, login, and session restore
+
 import Foundation
 
-/// Complete Supabase service mirroring the React Native SupabaseService.
-/// Uses the same Supabase project, tables, and storage buckets so data is shared across platforms.
 final class SupabaseService {
     static let shared = SupabaseService()
 

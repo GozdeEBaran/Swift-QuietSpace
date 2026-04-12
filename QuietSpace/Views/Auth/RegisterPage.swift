@@ -1,48 +1,65 @@
-// RegisterPage.swift
+// Daniil Orlov - 101500729
+// implemented the registration logic
+// and input validation
+
 import SwiftUI
 
 struct RegisterPage: View {
     @EnvironmentObject private var auth: AuthStore
-    @State private var goToMain = false
-    
+
     @State private var fullName: String = ""
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
     @State private var agreed: Bool = false
-    
+
+    @State private var showPassword = false
+    @State private var showConfirmPassword = false
+
+    @State private var goToLogin = false
+    @State private var showSuccessAlert = false
+
+    private var canSubmit: Bool {
+        agreed &&
+        !auth.isLoading &&
+        !fullName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !password.isEmpty &&
+        !confirmPassword.isEmpty
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 Spacer(minLength: 40)
-                
-                // Logo
+
                 Image(systemName: "location.circle.fill")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 80, height: 80)
                     .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.6))
-                
-                // Title and subtitle
+
                 Text("QuietSpace")
                     .font(.largeTitle)
                     .fontWeight(.bold)
-                
+
                 Text("Find Your Serenity")
                     .font(.title3)
                     .foregroundColor(.gray)
-                
+
                 Text("Register")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .padding(.top, 20)
-                
-                // Full Name field
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: "person")
                             .foregroundColor(.gray)
+
                         TextField("Full Name", text: $fullName)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
                     }
                     .padding()
                     .overlay(
@@ -52,15 +69,16 @@ struct RegisterPage: View {
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 10)
-                
-                // Email field
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: "envelope")
                             .foregroundColor(.gray)
+
                         TextField("Email Address", text: $email)
                             .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
                     }
                     .padding()
                     .overlay(
@@ -69,15 +87,22 @@ struct RegisterPage: View {
                     )
                 }
                 .padding(.horizontal, 40)
-                
-                // Password field
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: "lock")
                             .foregroundColor(.gray)
-                        SecureField("Password", text: $password)
-                        Button(action: {}) {
-                            Image(systemName: "eye.slash")
+
+                        if showPassword {
+                            TextField("Password", text: $password)
+                        } else {
+                            SecureField("Password", text: $password)
+                        }
+
+                        Button {
+                            showPassword.toggle()
+                        } label: {
+                            Image(systemName: showPassword ? "eye" : "eye.slash")
                                 .foregroundColor(.gray)
                         }
                     }
@@ -88,15 +113,22 @@ struct RegisterPage: View {
                     )
                 }
                 .padding(.horizontal, 40)
-                
-                // Confirm Password field
+
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: "lock")
                             .foregroundColor(.gray)
-                        SecureField("Confirm Password", text: $confirmPassword)
-                        Button(action: {}) {
-                            Image(systemName: "eye.slash")
+
+                        if showConfirmPassword {
+                            TextField("Confirm Password", text: $confirmPassword)
+                        } else {
+                            SecureField("Confirm Password", text: $confirmPassword)
+                        }
+
+                        Button {
+                            showConfirmPassword.toggle()
+                        } label: {
+                            Image(systemName: showConfirmPassword ? "eye" : "eye.slash")
                                 .foregroundColor(.gray)
                         }
                     }
@@ -107,30 +139,38 @@ struct RegisterPage: View {
                     )
                 }
                 .padding(.horizontal, 40)
-                
-                // Terms agreement toggle
+
                 HStack(spacing: 10) {
-                    Button(action: {
+                    Button {
                         agreed.toggle()
-                    }) {
+                    } label: {
                         Image(systemName: agreed ? "checkmark.square.fill" : "square")
                             .foregroundColor(agreed ? Color(red: 0.4, green: 0.7, blue: 0.6) : .gray)
                     }
+
                     Text("I agree to Terms & Privacy Policy")
                         .font(.subheadline)
                         .foregroundColor(.gray)
+
                     Spacer()
                 }
                 .padding(.horizontal, 40)
                 .padding(.top, 10)
-                
+
                 Button {
-                    auth.signUp(
-                        email: email,
-                        password: password,
-                        confirmPassword: confirmPassword,
-                        fullName: fullName
-                    )
+                    Task {
+                        do {
+                            try await auth.signUp(
+                                email: email,
+                                password: password,
+                                confirmPassword: confirmPassword,
+                                fullName: fullName
+                            )
+                            showSuccessAlert = true
+                        } catch {
+                            // auth.errorMessage is already set in AuthStore
+                        }
+                    }
                 } label: {
                     HStack {
                         if auth.isLoading {
@@ -140,32 +180,26 @@ struct RegisterPage: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(agreed ? Color(red: 0.6, green: 0.8, blue: 0.7) : Color.gray.opacity(0.5))
+                    .background(canSubmit ? Color(red: 0.6, green: 0.8, blue: 0.7) : Color.gray.opacity(0.5))
                     .foregroundColor(.white)
                     .cornerRadius(8)
                 }
+                .disabled(!canSubmit)
                 .padding(.horizontal, 40)
                 .padding(.top, 20)
-                .onChange(of: auth.isLoggedIn) { _, loggedIn in
-                    if loggedIn {
-                        goToMain = true
-                    }
-                }
-                .navigationDestination(isPresented: $goToMain) {
-                    MainPage()
-                }
-                
+
                 if let err = auth.errorMessage {
                     Text(err)
                         .foregroundColor(.red)
                         .font(.caption)
+                        .multilineTextAlignment(.center)
                         .padding(.horizontal, 40)
                 }
-                
-                // Login link
+
                 HStack {
                     Text("Already have an account?")
                         .font(.subheadline)
+
                     NavigationLink(destination: LoginPage()) {
                         Text("Login")
                             .font(.subheadline)
@@ -174,11 +208,21 @@ struct RegisterPage: View {
                     }
                 }
                 .padding(.top, 10)
-                
+
                 Spacer(minLength: 40)
             }
         }
         .background(Color.white)
         .navigationBarHidden(true)
+        .alert("Registration successful", isPresented: $showSuccessAlert) {
+            Button("OK") {
+                goToLogin = true
+            }
+        } message: {
+            Text("Please check your email for the confirmation.")
+        }
+        .navigationDestination(isPresented: $goToLogin) {
+            LoginPage()
+        }
     }
 }

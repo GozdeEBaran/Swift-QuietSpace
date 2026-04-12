@@ -1,3 +1,6 @@
+// Daniil Orlov - 101500729
+// connected the login logic to the UI
+
 // LoginPage.swift
 import SwiftUI
 
@@ -126,16 +129,16 @@ struct LoginPage: View {
                 }
                 
                 // Admin Login button navigates to Admin Profile
-                NavigationLink(destination: AdminProfile()) {
-                    Text("Login as Admin")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(red: 0.6, green: 0.8, blue: 0.7))
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
-                .padding(.horizontal, 40)
-                .padding(.top, 20)
+//                NavigationLink(destination: AdminProfile()) {
+//                    Text("Login as Admin")
+//                        .frame(maxWidth: .infinity)
+//                        .padding()
+//                        .background(Color(red: 0.6, green: 0.8, blue: 0.7))
+//                        .foregroundColor(.white)
+//                        .cornerRadius(8)
+//                }
+//                .padding(.horizontal, 40)
+//                .padding(.top, 20)
                 
                 
                 
@@ -153,55 +156,55 @@ struct LoginPage: View {
                 .padding(.top, 10)
                 
                 // Divider with "or"
-                HStack {
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(.gray.opacity(0.3))
-                    Text("or")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .padding(.horizontal, 10)
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(.gray.opacity(0.3))
-                }
-                .padding(.horizontal, 40)
-                .padding(.top, 20)
+//                HStack {
+//                    Rectangle()
+//                        .frame(height: 1)
+//                        .foregroundColor(.gray.opacity(0.3))
+//                    Text("or")
+//                        .font(.caption)
+//                        .foregroundColor(.gray)
+//                        .padding(.horizontal, 10)
+//                    Rectangle()
+//                        .frame(height: 1)
+//                        .foregroundColor(.gray.opacity(0.3))
+//                }
+//                .padding(.horizontal, 40)
+//                .padding(.top, 20)
                 
                 // Social login buttons (static placeholders)
-                VStack(spacing: 12) {
-                    Button(action: {}) {
-                        HStack {
-                            Image(systemName: "globe")
-                                .foregroundColor(.black)
-                            Text("Continue with Google")
-                                .foregroundColor(.black)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                        )
-                    }
-                    
-                    Button(action: {}) {
-                        HStack {
-                            Image(systemName: "applelogo")
-                                .foregroundColor(.black)
-                            Text("Continue with Apple")
-                                .foregroundColor(.black)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                        )
-                    }
-                }
-                .padding(.horizontal, 40)
-                .padding(.top, 10)
+//                VStack(spacing: 12) {
+//                    Button(action: {}) {
+//                        HStack {
+//                            Image(systemName: "globe")
+//                                .foregroundColor(.black)
+//                            Text("Continue with Google")
+//                                .foregroundColor(.black)
+//                        }
+//                        .frame(maxWidth: .infinity)
+//                        .padding()
+//                        .overlay(
+//                            RoundedRectangle(cornerRadius: 8)
+//                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+//                        )
+//                    }
+//                    
+//                    Button(action: {}) {
+//                        HStack {
+//                            Image(systemName: "applelogo")
+//                                .foregroundColor(.black)
+//                            Text("Continue with Apple")
+//                                .foregroundColor(.black)
+//                        }
+//                        .frame(maxWidth: .infinity)
+//                        .padding()
+//                        .overlay(
+//                            RoundedRectangle(cornerRadius: 8)
+//                                .stroke(Color.gray.opacity(0.5), lineWidth: 1)
+//                        )
+//                    }
+//                }
+//                .padding(.horizontal, 40)
+//                .padding(.top, 10)
                 
                 Spacer(minLength: 40)
             }
