@@ -1,3 +1,5 @@
+// Nguyen Minh Triet Luu — Student ID: 101542519
+
 import SwiftUI
 
 struct ProfileSettingsView: View {
@@ -14,6 +16,18 @@ struct ProfileSettingsView: View {
             Section {
                 Toggle("Notifications", isOn: $notificationsEnabled)
                 Toggle("Location Services", isOn: $locationEnabled)
+            }
+
+            Section("Account") {
+                NavigationLink("Display name") {
+                    ChangeDisplayNameSettingsView()
+                }
+                NavigationLink("Email") {
+                    ChangeEmailSettingsView()
+                }
+                NavigationLink("Password") {
+                    ChangePasswordSettingsView()
+                }
             }
 
             if isAdmin {

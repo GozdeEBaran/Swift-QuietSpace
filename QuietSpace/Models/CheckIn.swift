@@ -1,3 +1,5 @@
+// Nguyen Minh Triet Luu — Student ID: 101542519
+
 import Foundation
 
 struct CheckIn: Identifiable, Decodable {

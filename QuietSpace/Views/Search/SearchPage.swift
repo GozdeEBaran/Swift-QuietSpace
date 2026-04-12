@@ -3,6 +3,7 @@
 // Contribution:
 // - Refactored place card tap navigation to use selectedPlace + navigationDestination
 //   (replacing inline NavigationLink to ensure EnvironmentObjects are available)
+// Nguyen Minh Triet Luu — Student ID: 101542519
 
 import SwiftUI
 

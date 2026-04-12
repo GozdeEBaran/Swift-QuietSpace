@@ -144,4 +144,8 @@ final class AuthStore: ObservableObject {
     func updateCachedProfile(fullName: String?) {
         self.fullName = fullName
     }
+
+    func updateCachedEmail(_ email: String?) {
+        self.email = email
+    }
 }

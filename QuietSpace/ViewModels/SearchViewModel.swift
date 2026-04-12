@@ -3,6 +3,7 @@
 // Contribution:
 // - Replaced dummy/hardcoded search logic with a real Google Places text search API call
 // - Implemented async/await Task with MainActor result dispatch
+// Nguyen Minh Triet Luu — Student ID: 101542519
 
 import Foundation
 import Combine

@@ -1,5 +1,6 @@
 // Daniil Orlov - 101500729
 // logic for user registration, login, and session restore
+// Nguyen Minh Triet Luu — Student ID: 101542519
 
 import Foundation
 
@@ -150,7 +151,88 @@ final class SupabaseService {
     func signOut() {
         clearSavedSession()
     }
-    
+
+    /// Updates the signed-in user via `PUT /auth/v1/user` (email, password, and/or auth metadata).
+    func updateAuthUser(email: String? = nil, password: String? = nil, metadataFullName: String? = nil) async throws {
+        var payload: [String: Any] = [:]
+        if let e = email?.trimmingCharacters(in: .whitespacesAndNewlines), !e.isEmpty {
+            payload["email"] = e
+        }
+        if let p = password, !p.isEmpty {
+            payload["password"] = p
+        }
+        if let name = metadataFullName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            payload["data"] = ["full_name": name]
+        }
+        guard !payload.isEmpty else {
+            throw NSError(domain: "SupabaseService", code: 0, userInfo: [NSLocalizedDescriptionKey: "Nothing to update"])
+        }
+
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        var req = try request(base: authBase, path: "user", method: "PUT", body: body)
+        var (data, resp) = try await session.data(for: req)
+        guard var http = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 405 {
+            req = try request(base: authBase, path: "user", method: "PATCH", body: body)
+            (data, resp) = try await session.data(for: req)
+            guard let httpRetry = resp as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+            http = httpRetry
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let msg = Self.authAPIErrorMessage(from: data) ?? (String(data: data, encoding: .utf8) ?? "Unknown error")
+            throw NSError(domain: "SupabaseService", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: msg])
+        }
+        applyAuthUserAPIResponse(data)
+    }
+
+    /// Email stored with the current session (updated after auth responses when the server includes it).
+    func sessionStoredEmail() -> String? {
+        defaults.string(forKey: SessionKeys.email)
+    }
+
+    private static func authAPIErrorMessage(from data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        if let d = obj["error_description"] as? String { return d }
+        if let d = obj["msg"] as? String { return d }
+        if let e = obj["message"] as? String { return e }
+        if let e = obj["error"] as? String { return e }
+        return nil
+    }
+
+    /// Merges tokens and user fields from a GoTrue `/user` response into local session storage.
+    private func applyAuthUserAPIResponse(_ data: Data) {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+
+        if let session = json["session"] as? [String: Any] {
+            if let at = session["access_token"] as? String {
+                authToken = at
+                defaults.set(at, forKey: SessionKeys.accessToken)
+            }
+            if let rt = session["refresh_token"] as? String {
+                defaults.set(rt, forKey: SessionKeys.refreshToken)
+            }
+            if let user = session["user"] as? [String: Any] {
+                if let id = user["id"] as? String { defaults.set(id, forKey: SessionKeys.userId) }
+                if let em = user["email"] as? String { defaults.set(em, forKey: SessionKeys.email) }
+            }
+            return
+        }
+
+        if let at = json["access_token"] as? String {
+            authToken = at
+            defaults.set(at, forKey: SessionKeys.accessToken)
+        }
+        if let rt = json["refresh_token"] as? String {
+            defaults.set(rt, forKey: SessionKeys.refreshToken)
+        }
+        if let user = json["user"] as? [String: Any] {
+            if let id = user["id"] as? String { defaults.set(id, forKey: SessionKeys.userId) }
+            if let em = user["email"] as? String { defaults.set(em, forKey: SessionKeys.email) }
+        } else if let em = json["email"] as? String {
+            defaults.set(em, forKey: SessionKeys.email)
+        }
+    }
+
     private func saveSession(_ response: AuthResponse) {
         if let access = response.access_token {
             authToken = access

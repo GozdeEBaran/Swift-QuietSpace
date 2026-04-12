@@ -3,6 +3,7 @@
 // Contribution:
 // - Added location submission history to the activity feed
 // - Fetches user's submissions from Supabase and displays status (pending/approved/rejected)
+// Nguyen Minh Triet Luu — Student ID: 101542519
 
 import SwiftUI
 import CoreLocation
