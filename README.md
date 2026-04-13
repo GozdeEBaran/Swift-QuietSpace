@@ -52,3 +52,13 @@ FavoritesViewModel.swift — I replaced the hardcoded dummy favorites that were 
 FavoritesPage.swift — I added navigation so that tapping a place card opens the LocationProfileView for that place instead of doing nothing.
 
 UserProfileView.swift — I added the location submission history to the recent activity feed. It fetches the user's past submissions from Supabase and displays each one with a status badge showing whether it is pending, approved, or rejected.
+
+## Contributions — Daniil Orlov (Student ID: 101542519)
+- Created the UI for the User Profile, Admin Dashboard, Add location, and Review location screens
+- Created multiple reusable UI components (Nagivation bar, Settings Rows, Buttons)
+- `LocationManager.swift` — ensured currentLocation starts as nil, improved permission handling, and added fallback only when denied/failure
+- `MainPage.swift` — (temporarily) added reactive map centering using .onChange of location; later reverted after confirming emulator issue
+- `SupabaseService.swift` — added session persistence (save/restore/clear tokens using UserDefaults)
+- `AuthStore.swift` — implemented session restore on app launch, updated auth flow to persist user state, and refactored signUp to support email-confirmation flow (no auto-login)
+- `QuietSpaceApp.swift` — added loading state and conditional routing based on restored session (isLoading / isLoggedIn)
+- `RegisterPage.swift` — improved validation, sanitized inputs, disabled button correctly, added success alert, and redirected to login after registration
